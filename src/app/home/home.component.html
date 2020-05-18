@@ -1,0 +1,217 @@
+<div id="mySidenav" class="sidenav">
+    <div class="logo">
+        <img src="assets/menu-Icons/logo_inv.png">
+    </div>
+
+
+    <ng-template ngFor let-c [ngForOf]="config.columns">
+        <ng-template ngFor let-r [ngForOf]="c.rows">
+
+            <div *ngIf="r.type=='WhatsappWeb'">
+                <a (click)="r.visible = !r.visible; refreshColumnVisibility()">
+                    <div class="menu-item" [ngClass]="{disableMenu: !r.visible}">
+                        <img src="assets/menu-Icons/whatsapp.png">
+                    </div>
+                </a>
+            </div>
+            <div *ngIf="r.type=='Slack'">
+                <a (click)="r.visible = !r.visible; refreshColumnVisibility()">
+                    <div class="menu-item" [ngClass]="{disableMenu: !r.visible}">
+                        <img src="assets/menu-Icons/slack.png">
+                    </div>
+                </a>
+            </div>
+            <div *ngIf="r.type=='Grafana'">
+                <a *ngIf="r.type=='Grafana'" (click)="r.visible = !r.visible; refreshColumnVisibility()">
+                    <div class="menu-item" [ngClass]="{disableMenu: !r.visible}">
+                        <img src="assets/menu-Icons/clipart4503037.png">
+                    </div>
+                </a>
+            </div>
+        </ng-template>
+    </ng-template>
+    <div>
+        <a data-toggle="modal" id="buttonClick" data-target="#exampleModal">
+            <div class="menu-item">
+                <img src="assets/menu-Icons/add.png">
+            </div>
+        </a>
+    </div>
+    <div>
+        <a data-toggle="modal" data-target="#exampleModalCenter">
+            <div class="menu-item">
+                <img src="assets/menu-Icons/settings.png">
+            </div>
+        </a>
+    </div>
+    <!--
+    <a data-toggle="modal" id="buttonClick" data-target="#exampleModal" style="padding: 5% 5% 5% 20% "><img src="assets/menu-Icons/add.png" width="32px" height="32px"></a>
+    <hr>
+    <a data-toggle="modal" data-target="#exampleModalCenter" style="padding:5% 5% 5% 20% "><img src="assets/menu-Icons/settings.png" width="32px" height="32px"></a>
+    <hr>
+-->
+</div>
+
+<div class="main">
+    <as-split *ngIf="config" direction="horizontal" [disabled]="config.disabled" (dragStart)="onDragStart()" (dragEnd)="onDragEnd(-1, $event)">
+        <ng-template ngFor let-column [ngForOf]="config.columns" let-icol="index">
+            <as-split-area *ngIf="column.visible" [order]="icol" [size]="column.size">
+                <as-split direction="vertical" [disabled]="config.disabled" (dragStart)="onDragStart()" (dragEnd)="onDragEnd(icol, $event)">
+                    <ng-template ngFor let-row [ngForOf]="column.rows" let-irow="index">
+                        <as-split-area *ngIf="row.visible" [order]="irow" [size]="row.size">
+                            <div [ngSwitch]="row.type" class="bloc">
+                                <!-- <div *ngSwitchCase="'doc'" class="explanations">
+                                    <p>All areas size and visibility are saved to localStorage.<br>
+                                        Toggle areas visibility using following buttons:</p>
+                                    <ng-template ngFor let-c [ngForOf]="config.columns">
+                                        <ng-template ngFor let-r [ngForOf]="c.rows">
+                                            <button *ngIf="r.type !== 'doc'"
+                                                (click)="r.visible = !r.visible; refreshColumnVisibility()"
+                                                [class.active]="!r.visible" class="btn btn-warning">{{ r.type }}</button>
+    
+                                        </ng-template>
+                                    </ng-template>
+                                    <br>
+                                    <button class="btn btn-warning" [class.active]="!config.disabled"
+                                        (click)="toggleDisabled()">{{ 'isDisabled: ' + config.disabled }}</button>
+                                    <br>
+                                    <button (click)="resetConfig()" class="btn btn-warning">Reset localStorage</button>
+                                    <br>
+                                    <label>Site Url</label>
+                                    <input type="text" [(ngModel)]="urlfile">
+                                    <label>Site Name</label>
+                                    <input type="text" [(ngModel)]="siteName">
+    
+                                    <button type="button" id="butt" (click)="AddUrlMethod()">Add Url</button>
+                                </div> -->
+                                <div *ngSwitchDefault class="panel" id="Thy">
+                                    <webview [ngClass]="{hide: !isWebviewShow}" [src]='row.site' useragent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/81.0.4044.138 Safari/537.36" style="display:inline-flex; width: 100%; height: 100%;" autosize="on"></webview>
+                                    <div [ngClass]="{hide: isWebviewShow}">
+                                        <img src="assets/menu-Icons/loader.svg" width="100px" height="100px" />
+                                    </div>
+                                </div>
+                            </div>
+                        </as-split-area>
+                    </ng-template>
+                </as-split>
+            </as-split-area>
+        </ng-template>
+    </as-split>
+</div>
+
+
+<div class="modal fade" id="exampleModalCenter" tabindex="-1" role="dialog" aria-labelledby="exampleModalCenterTitle" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered" role="document">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="exampleModalLongTitle">Settings</h5>
+                <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                    <span aria-hidden="true">&times;</span>
+                </button>
+            </div>
+            <div class="modal-body">
+
+                <p>All areas size and visibility are saved to localStorage.<br> Toggle areas visibility using following buttons:
+                </p>
+                <ng-template ngFor let-c [ngForOf]="config.columns">
+                    <ng-template ngFor let-r [ngForOf]="c.rows">
+                        <button class="btn btn-light" (click)="r.visible = !r.visible; refreshColumnVisibility()" [class.active]="!r.visible">{{ r.type }}</button>
+
+                    </ng-template>
+                </ng-template>
+                <br>
+                <button class="btn btn-secondary" [class.active]="!config.disabled" (click)="toggleDisabled()">{{ 'Resize: ' + !config.disabled }}</button>
+                <br>
+                <button (click)="resetConfig()" class="btn btn-info">Reset </button>
+
+
+            </div>
+            <div class="modal-footer">
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal -->
+<div class="modal bd-example-modal-lg fade" id="exampleModal" tabindex="-1" role="dialog" aria-labelledby="exampleModalCenterTitle" aria-hidden="true">
+    <div class="modal-dialog modal-lg" role="document">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="exampleModalLongTitle">Add Url</h5>
+                <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                    <span aria-hidden="true">&times;</span>
+                </button>
+            </div>
+            <div class="modal-body">
+                <table>
+                    <tr>
+                        <th>Name</th>
+                        <th>Url</th>
+                        <th>Actioin</th>
+                    </tr>
+
+                    <ng-template ngFor let-column [ngForOf]="config.columns" let-icol="index">
+
+                        <ng-template ngFor let-row [ngForOf]="column.rows" let-irow="index">
+
+                            <ng-container [ngSwitch]="row.type">
+                                <ng-container *ngSwitchCase="'WhatsappWeb'">
+
+                                </ng-container>
+                                <ng-container *ngSwitchCase="'Slack'">
+
+                                </ng-container>
+                                <ng-container *ngSwitchCase="'Grafana'">
+
+                                </ng-container>
+                                <ng-container *ngSwitchDefault>
+                                    <tr>
+                                        <ng-container *ngIf="row.isEditable==false">
+                                            <td>{{row.type}}</td>
+                                            <td>{{row.site}}</td>
+                                            <td>
+                                                <a (click)="DeleteRow(irow,icol)" style="padding: 3px 3px 3px 3px;">
+                                                    <fa-icon [icon]="fatrash"></fa-icon>
+                                                </a>
+                                                <a (click)="EditRow(irow,icol)" style="padding: 3px 3px 3px 3px;">
+                                                    <fa-icon [icon]="faedit"></fa-icon>
+                                                </a>
+                                            </td>
+                                        </ng-container>
+                                        <ng-container *ngIf="row.isEditable==true">
+                                            <td>
+                                                <input type="text" [(ngModel)]="editsiteName">
+                                            </td>
+                                            <td>
+                                                <input type="text" [(ngModel)]="editurl">
+                                            </td>
+                                            <td>
+                                                <button type="button" class="btn btn-primary" (click)="EditMethod()">
+                                                    <fa-icon [icon]="faedit"></fa-icon>
+                                                </button>
+                                            </td>
+                                        </ng-container>
+                                    </tr>
+                                </ng-container>
+                            </ng-container>
+                        </ng-template>
+                    </ng-template>
+                    <tr>
+                        <td>
+                            <input type="text" [(ngModel)]="siteName">
+                        </td>
+                        <td>
+                            <input type="text" [(ngModel)]="urlfile">
+                        </td>
+                        <td>
+                            <button type="button" class="btn btn-primary" id="butt" (click)="AddUrlMethod()">
+                                <fa-icon [icon]="faAdd"></fa-icon>
+                            </button>
+                        </td>
+                    </tr>
+                </table>
+
+            </div>
+        </div>
+    </div>
+</div>
