@@ -30,7 +30,7 @@ const defaultConfig: IConfig = {
       size: 60,
       rows: [
         { visible: true, size: 50, type: 'Grafana', site: 'https://grafana.com/login', isEditable: false },
-         { visible: true, size: 50, type: 'Slack', site: 'https://slack.com/signin#/', isEditable: false }
+        { visible: true, size: 50, type: 'Slack', site: 'https://slack.com/signin#/', isEditable: false }
       ]
     },
     {
@@ -38,7 +38,7 @@ const defaultConfig: IConfig = {
       size: 40,
       rows: [
         { visible: true, size: 70, type: 'WhatsappWeb', site: 'https://web.whatsapp.com', isEditable: false },
-       // { visible: true, size: 30, type: 'doc', site: 'https://www.google.com', isEditable: false }
+        // { visible: true, size: 30, type: 'doc', site: 'https://www.google.com', isEditable: false }
       ]
     },
     /*
@@ -78,35 +78,80 @@ export class HomeComponent implements OnInit {
   constructor(private router: Router) {
 
   }
+  isColumnsOnly = false;
 
   AddUrlMethod() {
     var columns = this.config.columns.length;
 
     var rows = this.config.columns[columns - 1].rows.length;
-    if (rows % 2 === 0) {
-
+    if (rows % 2 != 0 && !this.isColumnsOnly) {
+      var row = { site: this.urlfile, size: 50, type: this.siteName, visible: true, isEditable: false };
+      this.config.columns[columns - 1].rows.push(row);
+    }
+    else {
       var row = { site: this.urlfile, size: 50, type: this.siteName, visible: true, isEditable: false };
       this.config.columns.push({ visible: true, size: 50, rows: [row] });
       this.config.disabled = false;
     }
-    else {
-      var row = { site: this.urlfile, size: 50, type: this.siteName, visible: true, isEditable: false };
-      this.config.columns[columns - 1].rows.push(row);
+    this.siteName = "";
+    this.urlfile = "";
+    this.saveLocalStorage();
+  }
+
+  toggleColumns() {
+    this.isColumnsOnly = !this.isColumnsOnly;
+    let tmpConfig = { columns: [], disabled: false };
+    if (this.isColumnsOnly) {
+      for (let i in this.config.columns) {
+        for (let j in this.config.columns[i].rows) {
+          tmpConfig.columns.push({
+            visible: this.config.columns[i].visible,
+            size: this.config.columns[i].size,
+            rows: [
+              { visible: this.config.columns[i].rows[j].visible, size: 100, type: this.config.columns[i].rows[j].type, site: this.config.columns[i].rows[j].site, isEditable: this.config.columns[i].rows[j].isEditable },
+            ]
+          })
+        }
+      }
     }
-    this.siteName="";
-    this.urlfile="";
+    else {
+      let tmpIndex = 0;
+      for (let i in this.config.columns) {
+        this.config.columns[i].rows[0].size = this.config.columns[i].rows[0].size / 2;
+        console.log((parseInt(i) + 1));
+        if ((parseInt(i) + 1) % 2 != 0) {
+          tmpConfig.columns.push({
+            visible: this.config.columns[i].visible,
+            size: this.config.columns[i].size,
+            rows: this.config.columns[i].rows
+          })
+          tmpIndex++;
+        }
+        else {
+          console.log(tmpConfig);
+          console.log(tmpIndex);
+          tmpConfig.columns[tmpIndex - 1].rows.push(this.config.columns[i].rows[0]);
+        }
+      }
+
+    }
+    console.log(tmpConfig);
+    tmpConfig.disabled =  this.config.disabled;
+    this.config = (tmpConfig as any);
+    localStorage.setItem("isColumnsOnly", JSON.stringify(this.isColumnsOnly));
     this.saveLocalStorage();
   }
 
   localStorageName = 'angular-split-ws'
   config: IConfig = null;
-  
+
   ngOnInit() {
+    this.isColumnsOnly = JSON.parse(localStorage.getItem("isColumnsOnly"));
     if (localStorage.getItem(this.localStorageName)) {
       this.config = JSON.parse(localStorage.getItem(this.localStorageName));
     }
     else {
-    //  this.config = defaultConfig;
+      //  this.config = defaultConfig;
       localStorage.setItem("default", JSON.stringify(defaultConfig));
       this.resetConfig();
     }
@@ -118,9 +163,11 @@ export class HomeComponent implements OnInit {
   }
 
   resetConfig() {
-      localStorage.removeItem(this.localStorageName);
-      this.config = JSON.parse(localStorage.getItem("default"));
-      this.refreshColumnVisibility()
+    this.isColumnsOnly = false;
+    localStorage.setItem("isColumnsOnly", JSON.stringify(this.isColumnsOnly));
+    localStorage.removeItem(this.localStorageName);
+    this.config = JSON.parse(localStorage.getItem("default"));
+    this.refreshColumnVisibility()
   }
 
 
@@ -188,7 +235,7 @@ export class HomeComponent implements OnInit {
   }
 
 
-  onDragStart(){
+  onDragStart() {
     this.isWebviewShow = false;
     console.log("drag start")
   }

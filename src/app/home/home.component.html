@@ -121,6 +121,8 @@
                     </ng-template>
                 </ng-template>
                 <br>
+                <button class="btn btn-secondary" [class.active]="!config.disabled" (click)="toggleColumns()">{{ 'Columns Only: ' + isColumnsOnly }}</button>
+                <br>
                 <button class="btn btn-secondary" [class.active]="!config.disabled" (click)="toggleDisabled()">{{ 'Resize: ' + !config.disabled }}</button>
                 <br>
                 <button (click)="resetConfig()" class="btn btn-info">Reset </button>

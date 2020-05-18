@@ -1,4 +1,4 @@
-import { app, BrowserWindow, Menu, screen } from 'electron';
+import { app, BrowserWindow, Menu, screen, shell } from 'electron';
 import * as path from 'path';
 import * as url from 'url';
 
@@ -14,7 +14,7 @@ function createWindow(): BrowserWindow {
   // Create the browser window.
   win = new BrowserWindow({
     //x: 0,
-   // y: 0,
+    // y: 0,
     width: size.width,
     height: size.height,
     webPreferences: {
@@ -44,7 +44,7 @@ function createWindow(): BrowserWindow {
       slashes: true
     }));
   }
-  
+
 
   // Emitted when the window is closed.
   win.on('closed', () => {
@@ -56,14 +56,14 @@ function createWindow(): BrowserWindow {
 
   return win;
 }
-
+/*
 function OpenPopup(urlLink) {
   console.log(urlLink);
   const size = screen.getPrimaryDisplay().workAreaSize;
 
   let popup = new BrowserWindow({
-  //  x: 0,
-   // y: 0,
+    //  x: 0,
+    // y: 0,
     width: size.width / 3,
     height: size.height / 3,
     webPreferences: {
@@ -73,6 +73,7 @@ function OpenPopup(urlLink) {
   popup.loadURL(urlLink);
   popup.removeMenu()
 }
+*/
 
 try {
 
@@ -107,8 +108,8 @@ try {
       contents.on('new-window', function (newWindowEvent, url) {
         console.log(url);
         console.log('opening popup');
-        if(url)
-        OpenPopup(url);
+        if (url)
+          shell.openExternal(url);
         newWindowEvent.preventDefault();
       });
     }

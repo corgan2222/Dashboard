@@ -22,6 +22,7 @@ function createWindow() {
         },
     });
     electron_1.Menu.setApplicationMenu(null);
+    win.removeMenu();
     if (serve) {
         require('devtron').install();
         win.webContents.openDevTools();
@@ -46,20 +47,24 @@ function createWindow() {
     });
     return win;
 }
+/*
 function OpenPopup(urlLink) {
-    console.log(urlLink);
-    var size = electron_1.screen.getPrimaryDisplay().workAreaSize;
-    var popup = new electron_1.BrowserWindow({
-        //  x: 0,
-        // y: 0,
-        width: size.width / 3,
-        height: size.height / 3,
-        webPreferences: {
-            allowRunningInsecureContent: true,
-        },
-    });
-    popup.loadURL(urlLink);
+  console.log(urlLink);
+  const size = screen.getPrimaryDisplay().workAreaSize;
+
+  let popup = new BrowserWindow({
+    //  x: 0,
+    // y: 0,
+    width: size.width / 3,
+    height: size.height / 3,
+    webPreferences: {
+      allowRunningInsecureContent: true,
+    },
+  });
+  popup.loadURL(urlLink);
+  popup.removeMenu()
 }
+*/
 try {
     electron_1.app.allowRendererProcessReuse = true;
     // This method will be called when Electron has finished
@@ -89,7 +94,7 @@ try {
                 console.log(url);
                 console.log('opening popup');
                 if (url)
-                    OpenPopup(url);
+                    electron_1.shell.openExternal(url);
                 newWindowEvent.preventDefault();
             });
         }
