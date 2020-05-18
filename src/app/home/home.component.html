@@ -85,7 +85,8 @@
                                     <button type="button" id="butt" (click)="AddUrlMethod()">Add Url</button>
                                 </div> -->
                                 <div *ngSwitchDefault class="panel" id="Thy">
-                                    <webview [ngClass]="{hide: !isWebviewShow}" [src]='row.site' useragent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/81.0.4044.138 Safari/537.36" style="display:inline-flex; width: 100%; height: 100%;" autosize="on"></webview>
+                                    <webview webpreferences="nativeWindowOpen=true" allowpopups [ngClass]="{hide: !isWebviewShow}" [src]='row.site' useragent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/81.0.4044.138 Safari/537.36" style="display:inline-flex; width: 100%; height: 100%;"
+                                        autosize="on"></webview>
                                     <div [ngClass]="{hide: isWebviewShow}">
                                         <img src="assets/menu-Icons/loader.svg" width="100px" height="100px" />
                                     </div>
@@ -155,6 +156,7 @@
                         <ng-template ngFor let-row [ngForOf]="column.rows" let-irow="index">
 
                             <ng-container [ngSwitch]="row.type">
+                                <!--
                                 <ng-container *ngSwitchCase="'WhatsappWeb'">
 
                                 </ng-container>
@@ -165,12 +167,14 @@
 
                                 </ng-container>
                                 <ng-container *ngSwitchDefault>
+                                    -->
+                                <ng-container>
                                     <tr>
                                         <ng-container *ngIf="row.isEditable==false">
                                             <td>{{row.type}}</td>
                                             <td>{{row.site}}</td>
                                             <td>
-                                                <a (click)="DeleteRow(irow,icol)" style="padding: 3px 3px 3px 3px;">
+                                                <a *ngIf="row.type != 'WhatsappWeb' || row.type != 'Slack' || row.type != 'Grafana' " (click)="DeleteRow(irow,icol)" style="padding: 3px 3px 3px 3px;">
                                                     <fa-icon [icon]="fatrash"></fa-icon>
                                                 </a>
                                                 <a (click)="EditRow(irow,icol)" style="padding: 3px 3px 3px 3px;">
@@ -191,6 +195,7 @@
                                                 </button>
                                             </td>
                                         </ng-container>
+
                                     </tr>
                                 </ng-container>
                             </ng-container>

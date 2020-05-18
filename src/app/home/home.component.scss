@@ -100,18 +100,9 @@ tr:nth-child(even) {
     display: none !important;
 }
 
-.disableMenu {
-    opacity: 30%;
-}
-
 .menu-item {
     padding: 10px;
     text-align: center;
-}
-
-.menu-item:hover {
-    opacity: 90%;
-    background-color: #343a40;
 }
 
 .menu-item img {
@@ -126,4 +117,12 @@ tr:nth-child(even) {
 
 .logo img {
     height: 50px;
+}
+
+.disableMenu {
+    opacity: 0.5;
+}
+
+.menu-item:hover {
+    background-color: #343a40;
 }

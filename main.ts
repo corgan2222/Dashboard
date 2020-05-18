@@ -1,4 +1,4 @@
-import { app, BrowserWindow, screen } from 'electron';
+import { app, BrowserWindow, Menu, screen } from 'electron';
 import * as path from 'path';
 import * as url from 'url';
 
@@ -13,16 +13,19 @@ function createWindow(): BrowserWindow {
 
   // Create the browser window.
   win = new BrowserWindow({
-    x: 0,
-    y: 0,
+    //x: 0,
+   // y: 0,
     width: size.width,
     height: size.height,
     webPreferences: {
       nodeIntegration: true,
-      allowRunningInsecureContent: (serve) ? true : false,
+      //allowRunningInsecureContent: (serve) ? true : false,
+      allowRunningInsecureContent: true,
       webviewTag: true
     },
   });
+  Menu.setApplicationMenu(null);
+  win.removeMenu();
 
   if (serve) {
 
@@ -41,6 +44,7 @@ function createWindow(): BrowserWindow {
       slashes: true
     }));
   }
+  
 
   // Emitted when the window is closed.
   win.on('closed', () => {
@@ -51,6 +55,23 @@ function createWindow(): BrowserWindow {
   });
 
   return win;
+}
+
+function OpenPopup(urlLink) {
+  console.log(urlLink);
+  const size = screen.getPrimaryDisplay().workAreaSize;
+
+  let popup = new BrowserWindow({
+  //  x: 0,
+   // y: 0,
+    width: size.width / 3,
+    height: size.height / 3,
+    webPreferences: {
+      allowRunningInsecureContent: true,
+    },
+  });
+  popup.loadURL(urlLink);
+  popup.removeMenu()
 }
 
 try {
@@ -77,6 +98,19 @@ try {
     // dock icon is clicked and there are no other windows open.
     if (win === null) {
       createWindow();
+    }
+  });
+
+  app.on('web-contents-created', function (webContentsCreatedEvent, contents) {
+    console.log('web-contents-created');
+    if (contents.getType() === 'webview') {
+      contents.on('new-window', function (newWindowEvent, url) {
+        console.log(url);
+        console.log('opening popup');
+        if(url)
+        OpenPopup(url);
+        newWindowEvent.preventDefault();
+      });
     }
   });
 

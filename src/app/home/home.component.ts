@@ -4,7 +4,7 @@ import { InterpolationConfig, ThrowStmt } from '@angular/compiler';
 import { faCoffee, faTrashAlt, faEdit, faPlusSquare, faRedoAlt } from '@fortawesome/free-solid-svg-icons';
 
 
-declare var external: any;
+//declare var external: any;
 declare var $: any;
 
 interface IConfig {

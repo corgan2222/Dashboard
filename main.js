@@ -10,16 +10,18 @@ function createWindow() {
     var size = electronScreen.getPrimaryDisplay().workAreaSize;
     // Create the browser window.
     win = new electron_1.BrowserWindow({
-        x: 0,
-        y: 0,
+        //x: 0,
+        // y: 0,
         width: size.width,
         height: size.height,
         webPreferences: {
             nodeIntegration: true,
-            allowRunningInsecureContent: (serve) ? true : false,
+            //allowRunningInsecureContent: (serve) ? true : false,
+            allowRunningInsecureContent: true,
             webviewTag: true
         },
     });
+    electron_1.Menu.setApplicationMenu(null);
     if (serve) {
         require('devtron').install();
         win.webContents.openDevTools();
@@ -44,6 +46,20 @@ function createWindow() {
     });
     return win;
 }
+function OpenPopup(urlLink) {
+    console.log(urlLink);
+    var size = electron_1.screen.getPrimaryDisplay().workAreaSize;
+    var popup = new electron_1.BrowserWindow({
+        //  x: 0,
+        // y: 0,
+        width: size.width / 3,
+        height: size.height / 3,
+        webPreferences: {
+            allowRunningInsecureContent: true,
+        },
+    });
+    popup.loadURL(urlLink);
+}
 try {
     electron_1.app.allowRendererProcessReuse = true;
     // This method will be called when Electron has finished
@@ -64,6 +80,18 @@ try {
         // dock icon is clicked and there are no other windows open.
         if (win === null) {
             createWindow();
+        }
+    });
+    electron_1.app.on('web-contents-created', function (webContentsCreatedEvent, contents) {
+        console.log('web-contents-created');
+        if (contents.getType() === 'webview') {
+            contents.on('new-window', function (newWindowEvent, url) {
+                console.log(url);
+                console.log('opening popup');
+                if (url)
+                    OpenPopup(url);
+                newWindowEvent.preventDefault();
+            });
         }
     });
 }
