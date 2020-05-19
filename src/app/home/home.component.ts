@@ -144,8 +144,10 @@ export class HomeComponent implements OnInit {
 
   localStorageName = 'angular-split-ws'
   config: IConfig = null;
-
+  preload ='';
   ngOnInit() {
+   this.preload = encodeURI("file://"+ __dirname +"/assets/preload.js");
+    console.log(this.preload);
     this.isColumnsOnly = JSON.parse(localStorage.getItem("isColumnsOnly"));
     if (localStorage.getItem(this.localStorageName)) {
       this.config = JSON.parse(localStorage.getItem(this.localStorageName));

@@ -21,8 +21,8 @@ function createWindow() {
             webviewTag: true
         },
     });
-    electron_1.Menu.setApplicationMenu(null);
-    win.removeMenu();
+    // Menu.setApplicationMenu(null);
+    // win.removeMenu();
     if (serve) {
         require('devtron').install();
         win.webContents.openDevTools();
@@ -45,6 +45,21 @@ function createWindow() {
         // when you should delete the corresponding element.
         win = null;
     });
+    // win.webContents.on('dom-ready', function (e) {
+    //   console.log('dom-ready');
+    //   let script = `
+    //       window.onunload = () => {
+    //           navigator.serviceWorker.getRegistrations().then(
+    //               function(registrations) {
+    //                   for(let registration of registrations) {
+    //                       registration.unregister();
+    //                   }
+    //               }
+    //           )
+    //       }
+    //       `
+    //   win.webContents.executeJavaScript(script)
+    // })
     return win;
 }
 /*
@@ -90,6 +105,9 @@ try {
     electron_1.app.on('web-contents-created', function (webContentsCreatedEvent, contents) {
         console.log('web-contents-created');
         if (contents.getType() === 'webview') {
+            //contents.openDevTools();
+            var script = "\n                  console.log(\"preprocessing\");\n                  if (document.body.innerText.search(\"Google Chrome 49+\") !== -1)\n                  navigator.serviceWorker.getRegistrations().then(\n                      function(registrations) {\n                          console.log(registrations);\n                          for (let registration of registrations) {\n                              registration.unregister();\n                          }\n                          document.location.reload()\n                      }\n                  )\n                ";
+            contents.executeJavaScript(script);
             contents.on('new-window', function (newWindowEvent, url) {
                 console.log(url);
                 console.log('opening popup');

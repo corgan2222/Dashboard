@@ -60,33 +60,12 @@
                     <ng-template ngFor let-row [ngForOf]="column.rows" let-irow="index">
                         <as-split-area *ngIf="row.visible" [order]="irow" [size]="row.size">
                             <div [ngSwitch]="row.type" class="bloc">
-                                <!-- <div *ngSwitchCase="'doc'" class="explanations">
-                                    <p>All areas size and visibility are saved to localStorage.<br>
-                                        Toggle areas visibility using following buttons:</p>
-                                    <ng-template ngFor let-c [ngForOf]="config.columns">
-                                        <ng-template ngFor let-r [ngForOf]="c.rows">
-                                            <button *ngIf="r.type !== 'doc'"
-                                                (click)="r.visible = !r.visible; refreshColumnVisibility()"
-                                                [class.active]="!r.visible" class="btn btn-warning">{{ r.type }}</button>
-    
-                                        </ng-template>
-                                    </ng-template>
-                                    <br>
-                                    <button class="btn btn-warning" [class.active]="!config.disabled"
-                                        (click)="toggleDisabled()">{{ 'isDisabled: ' + config.disabled }}</button>
-                                    <br>
-                                    <button (click)="resetConfig()" class="btn btn-warning">Reset localStorage</button>
-                                    <br>
-                                    <label>Site Url</label>
-                                    <input type="text" [(ngModel)]="urlfile">
-                                    <label>Site Name</label>
-                                    <input type="text" [(ngModel)]="siteName">
-    
-                                    <button type="button" id="butt" (click)="AddUrlMethod()">Add Url</button>
-                                </div> -->
                                 <div *ngSwitchDefault class="panel" id="Thy">
-                                    <webview webpreferences="nativeWindowOpen=true" allowpopups [ngClass]="{hide: !isWebviewShow}" [src]='row.site' useragent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/81.0.4044.138 Safari/537.36" style="display:inline-flex; width: 100%; height: 100%;"
-                                        autosize="on"></webview>
+                                    <!--
+                                        Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:76.0) Gecko/20100101 Firefox/76.0
+                                        Mozilla/5.0 (Windows NT 10.0; WOW64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/71.0.3578.80 Safari/537.36
+                                    -->
+                                    <webview [ngClass]="{hide: !isWebviewShow}" [src]='row.site' useragent="Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:76.0) Gecko/20100101 Firefox/76.0" style="display:inline-flex; width: 100%; height: 100%;" autosize="on"></webview>
                                     <div [ngClass]="{hide: isWebviewShow}">
                                         <img src="assets/menu-Icons/loader.svg" width="100px" height="100px" />
                                     </div>

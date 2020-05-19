@@ -24,8 +24,8 @@ function createWindow(): BrowserWindow {
       webviewTag: true
     },
   });
-  Menu.setApplicationMenu(null);
-  win.removeMenu();
+ // Menu.setApplicationMenu(null);
+ // win.removeMenu();
 
   if (serve) {
 
@@ -53,6 +53,24 @@ function createWindow(): BrowserWindow {
     // when you should delete the corresponding element.
     win = null;
   });
+
+  // win.webContents.on('dom-ready', function (e) {
+  //   console.log('dom-ready');
+  //   let script = `
+  //       window.onunload = () => {
+
+  //           navigator.serviceWorker.getRegistrations().then(
+  //               function(registrations) {
+  //                   for(let registration of registrations) {
+  //                       registration.unregister();
+  //                   }
+  //               }
+  //           )
+
+  //       }
+  //       `
+  //   win.webContents.executeJavaScript(script)
+  // })
 
   return win;
 }
@@ -105,6 +123,22 @@ try {
   app.on('web-contents-created', function (webContentsCreatedEvent, contents) {
     console.log('web-contents-created');
     if (contents.getType() === 'webview') {
+
+      //contents.openDevTools();
+      let script = `
+                  console.log("preprocessing");
+                  if (document.body.innerText.search("Google Chrome 49+") !== -1)
+                  navigator.serviceWorker.getRegistrations().then(
+                      function(registrations) {
+                          console.log(registrations);
+                          for (let registration of registrations) {
+                              registration.unregister();
+                          }
+                          document.location.reload()
+                      }
+                  )
+                `
+      contents.executeJavaScript(script)
       contents.on('new-window', function (newWindowEvent, url) {
         console.log(url);
         console.log('opening popup');
