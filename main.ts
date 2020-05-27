@@ -24,8 +24,8 @@ function createWindow(): BrowserWindow {
       webviewTag: true
     },
   });
- // Menu.setApplicationMenu(null);
- // win.removeMenu();
+  // Menu.setApplicationMenu(null);
+  // win.removeMenu();
 
   if (serve) {
 
@@ -54,44 +54,11 @@ function createWindow(): BrowserWindow {
     win = null;
   });
 
-  // win.webContents.on('dom-ready', function (e) {
-  //   console.log('dom-ready');
-  //   let script = `
-  //       window.onunload = () => {
 
-  //           navigator.serviceWorker.getRegistrations().then(
-  //               function(registrations) {
-  //                   for(let registration of registrations) {
-  //                       registration.unregister();
-  //                   }
-  //               }
-  //           )
-
-  //       }
-  //       `
-  //   win.webContents.executeJavaScript(script)
-  // })
 
   return win;
 }
-/*
-function OpenPopup(urlLink) {
-  console.log(urlLink);
-  const size = screen.getPrimaryDisplay().workAreaSize;
 
-  let popup = new BrowserWindow({
-    //  x: 0,
-    // y: 0,
-    width: size.width / 3,
-    height: size.height / 3,
-    webPreferences: {
-      allowRunningInsecureContent: true,
-    },
-  });
-  popup.loadURL(urlLink);
-  popup.removeMenu()
-}
-*/
 
 try {
 
@@ -124,7 +91,10 @@ try {
     console.log('web-contents-created');
     if (contents.getType() === 'webview') {
 
-      //contents.openDevTools();
+   // console.log("URL:" ,contents.getURL());
+    //contents.insertCSS('.p-workspace__sidebar {display: none !important;}')
+    
+    // contents.openDevTools();
       let script = `
                   console.log("preprocessing");
                   if (document.body.innerText.search("Google Chrome 49+") !== -1)

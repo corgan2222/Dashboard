@@ -1,8 +1,7 @@
-import { Component, OnInit, ChangeDetectionStrategy } from '@angular/core';
+import { Component, OnInit, ChangeDetectionStrategy, ElementRef } from '@angular/core';
 import { Router } from '@angular/router';
 import { InterpolationConfig, ThrowStmt } from '@angular/compiler';
 import { faCoffee, faTrashAlt, faEdit, faPlusSquare, faRedoAlt } from '@fortawesome/free-solid-svg-icons';
-
 
 //declare var external: any;
 declare var $: any;
@@ -136,7 +135,7 @@ export class HomeComponent implements OnInit {
 
     }
     console.log(tmpConfig);
-    tmpConfig.disabled =  this.config.disabled;
+    tmpConfig.disabled = this.config.disabled;
     this.config = (tmpConfig as any);
     localStorage.setItem("isColumnsOnly", JSON.stringify(this.isColumnsOnly));
     this.saveLocalStorage();
@@ -144,9 +143,9 @@ export class HomeComponent implements OnInit {
 
   localStorageName = 'angular-split-ws'
   config: IConfig = null;
-  preload ='';
+  preload = '';
   ngOnInit() {
-   this.preload = encodeURI("file://"+ __dirname +"/assets/preload.js");
+    this.preload = encodeURI("file://" + __dirname + "/assets/preload.js");
     console.log(this.preload);
     this.isColumnsOnly = JSON.parse(localStorage.getItem("isColumnsOnly"));
     if (localStorage.getItem(this.localStorageName)) {
@@ -261,6 +260,68 @@ export class HomeComponent implements OnInit {
 
   saveLocalStorage() {
     localStorage.setItem(this.localStorageName, JSON.stringify(this.config));
+  }
+
+  getWebViewId(url) {
+    let id = url.split('.c')[0];
+    id = id.split('//')[1];
+    id = id.toLowerCase();
+    console.log("webview id:", id);
+    return id;
+  }
+
+  webview;
+  isDefaultCSS = false;
+  customCSS = 'html[dir] .landing-wrapper:before { background-color: #00a5f4 !important; } .page-footer {display: none  !important;} .p-workspace.p-workspace--context-pane-collapsed.p-workspace--classic-nav.p-workspace--iap1 { grid-template-columns: 0px auto !important; }';
+  loadCustomCss(manual) {
+
+    if (this.isDefaultCSS)
+      return;
+
+    localStorage.setItem("CustomCSS", JSON.stringify(this.customCSS));
+    console.log("loading css...");
+    this.webview = document.getElementsByClassName('appHandler');
+
+    if (manual) {
+      for (var i = 0; i < this.webview.length; i++) {
+        console.log("updating css");
+        (this.webview[i] as any).insertCSS(this.customCSS);
+
+      }
+    }
+    else {
+      this.webview[this.webview.length - 1].addEventListener('dom-ready', () => {
+        //        this.webview[1].openDevTools();
+        for (var i = 0; i < this.webview.length; i++) {
+          console.log("appling css");
+          (this.webview[i] as any).insertCSS(this.customCSS);
+        }
+      });
+    }
+
+  }
+  defaultCSS() {
+    this.isDefaultCSS = !this.isDefaultCSS;
+    localStorage.setItem("isDefaultCSS", JSON.stringify(this.isDefaultCSS));
+    window.location.reload();
+  }
+
+  ngAfterViewInit() {
+    let tempCustomCSS = JSON.parse(localStorage.getItem("CustomCSS"));
+    if(tempCustomCSS){
+      this.customCSS = tempCustomCSS;
+    }
+    
+    let tempIsDefaultCSS = JSON.parse(localStorage.getItem("isDefaultCSS"));
+    if(tempIsDefaultCSS){
+      this.isDefaultCSS = tempIsDefaultCSS;
+    }
+
+    console.log(this.isDefaultCSS, this.customCSS );
+
+    setTimeout(() => {
+      this.loadCustomCss(false)
+    }, 1000)
   }
 
 }

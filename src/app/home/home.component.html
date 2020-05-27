@@ -7,22 +7,22 @@
     <ng-template ngFor let-c [ngForOf]="config.columns">
         <ng-template ngFor let-r [ngForOf]="c.rows">
 
-            <div *ngIf="r.type=='WhatsappWeb'">
+            <div *ngIf="r.site.indexOf('whatsapp') != -1">
                 <a (click)="r.visible = !r.visible; refreshColumnVisibility()">
                     <div class="menu-item" [ngClass]="{disableMenu: !r.visible}">
                         <img src="assets/menu-Icons/whatsapp.png">
                     </div>
                 </a>
             </div>
-            <div *ngIf="r.type=='Slack'">
+            <div *ngIf="r.site.indexOf('slack') != -1">
                 <a (click)="r.visible = !r.visible; refreshColumnVisibility()">
                     <div class="menu-item" [ngClass]="{disableMenu: !r.visible}">
                         <img src="assets/menu-Icons/slack.png">
                     </div>
                 </a>
             </div>
-            <div *ngIf="r.type=='Grafana'">
-                <a *ngIf="r.type=='Grafana'" (click)="r.visible = !r.visible; refreshColumnVisibility()">
+            <div *ngIf="r.site.indexOf('grafana') != -1">
+                <a (click)="r.visible = !r.visible; refreshColumnVisibility()">
                     <div class="menu-item" [ngClass]="{disableMenu: !r.visible}">
                         <img src="assets/menu-Icons/clipart4503037.png">
                     </div>
@@ -65,7 +65,8 @@
                                         Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:76.0) Gecko/20100101 Firefox/76.0
                                         Mozilla/5.0 (Windows NT 10.0; WOW64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/71.0.3578.80 Safari/537.36
                                     -->
-                                    <webview [ngClass]="{hide: !isWebviewShow}" [src]='row.site' useragent="Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:76.0) Gecko/20100101 Firefox/76.0" style="display:inline-flex; width: 100%; height: 100%;" autosize="on"></webview>
+                                    <webview [id]="getWebViewId(row.site)" class="appHandler" [ngClass]="{hide: !isWebviewShow}" [src]='row.site' useragent="Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:76.0) Gecko/20100101 Firefox/76.0" style="display:inline-flex; width: 100%; height: 100%;"
+                                        autosize="on"></webview>
                                     <div [ngClass]="{hide: isWebviewShow}">
                                         <img src="assets/menu-Icons/loader.svg" width="100px" height="100px" />
                                     </div>
@@ -105,7 +106,14 @@
                 <button class="btn btn-secondary" [class.active]="!config.disabled" (click)="toggleDisabled()">{{ 'Resize: ' + !config.disabled }}</button>
                 <br>
                 <button (click)="resetConfig()" class="btn btn-info">Reset </button>
-
+                <hr>
+                <b class="customCSS-lbl">Custom CSS</b>
+                <br>
+                <textarea class="customCSS-editor" rows="6" [(ngModel)]="customCSS">
+                </textarea>
+                <br>
+                <button (click)="loadCustomCss(true)" class="btn btn-primary" style="background : #1abc9c; border-color:#27ae60;">Apply CSS</button> &nbsp;
+                <button (click)="defaultCSS()" class="btn btn-primary" style="background : #e74c3c; border-color:#c0392b;">Default CSS: {{isDefaultCSS}}</button>
 
             </div>
             <div class="modal-footer">

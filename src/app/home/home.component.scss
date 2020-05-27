@@ -126,3 +126,15 @@ tr:nth-child(even) {
 .menu-item:hover {
     background-color: #343a40;
 }
+
+.customCSS-lbl {
+    color: #495057;
+    font-size: small;
+}
+
+.customCSS-editor {
+    width: 100%;
+    color: #d35400;
+    border-color: #bac5d0;
+    border-radius: 5px;
+}
