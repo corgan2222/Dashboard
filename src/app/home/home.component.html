@@ -112,7 +112,7 @@
                 <textarea class="customCSS-editor" rows="6" [(ngModel)]="customCSS">
                 </textarea>
                 <br>
-                <button (click)="loadCustomCss(true)" class="btn btn-primary" style="background : #1abc9c; border-color:#27ae60;">Apply CSS</button> &nbsp;
+                <button (click)="loadCustomCss(true)" class="btn btn-primary" style="background : #1abc9c; border-color:#27ae60;" [disabled]="isDefaultCSS">Apply CSS</button> &nbsp;
                 <button (click)="defaultCSS()" class="btn btn-primary" style="background : #e74c3c; border-color:#c0392b;">Default CSS: {{isDefaultCSS}}</button>
 
             </div>

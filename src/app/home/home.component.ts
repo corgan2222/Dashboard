@@ -303,7 +303,13 @@ export class HomeComponent implements OnInit {
   defaultCSS() {
     this.isDefaultCSS = !this.isDefaultCSS;
     localStorage.setItem("isDefaultCSS", JSON.stringify(this.isDefaultCSS));
-    window.location.reload();
+    this.webview = document.getElementsByClassName('appHandler');
+
+    for (var i = 0; i < this.webview.length; i++) {
+      console.log("reloading webview ...");
+      (this.webview[i] as any).reload();
+
+    }
   }
 
   ngAfterViewInit() {
