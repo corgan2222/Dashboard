@@ -18,9 +18,11 @@ function createWindow(): BrowserWindow {
     width: size.width,
     height: size.height,
     webPreferences: {
+      webSecurity: false,
       nodeIntegration: true,
       //allowRunningInsecureContent: (serve) ? true : false,
       allowRunningInsecureContent: true,
+      
       webviewTag: true
     },
   });
@@ -97,7 +99,7 @@ try {
     // contents.openDevTools();
       let script = `
                   console.log("preprocessing");
-                  if (document.body.innerText.search("Google Chrome 49+") !== -1)
+                  if (document.body.innerText.search("Google Chrome 60+") !== -1)
                   navigator.serviceWorker.getRegistrations().then(
                       function(registrations) {
                           console.log(registrations);

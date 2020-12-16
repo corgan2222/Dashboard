@@ -15,6 +15,7 @@ function createWindow() {
         width: size.width,
         height: size.height,
         webPreferences: {
+            webSecurity: false,
             nodeIntegration: true,
             //allowRunningInsecureContent: (serve) ? true : false,
             allowRunningInsecureContent: true,
@@ -75,7 +76,7 @@ try {
             // console.log("URL:" ,contents.getURL());
             //contents.insertCSS('.p-workspace__sidebar {display: none !important;}')
             // contents.openDevTools();
-            var script = "\n                  console.log(\"preprocessing\");\n                  if (document.body.innerText.search(\"Google Chrome 49+\") !== -1)\n                  navigator.serviceWorker.getRegistrations().then(\n                      function(registrations) {\n                          console.log(registrations);\n                          for (let registration of registrations) {\n                              registration.unregister();\n                          }\n                          document.location.reload()\n                      }\n                  )\n                ";
+            var script = "\n                  console.log(\"preprocessing\");\n                  if (document.body.innerText.search(\"Google Chrome 60+\") !== -1)\n                  navigator.serviceWorker.getRegistrations().then(\n                      function(registrations) {\n                          console.log(registrations);\n                          for (let registration of registrations) {\n                              registration.unregister();\n                          }\n                          document.location.reload()\n                      }\n                  )\n                ";
             contents.executeJavaScript(script);
             contents.on('new-window', function (newWindowEvent, url) {
                 console.log(url);
