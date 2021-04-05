@@ -5,7 +5,6 @@
 
 ![](https://raw.githubusercontent.com/corgan2222/Dashboard/master/doc/it_dash_3.jpg)
 
-
 # Features
 
 - 6 Panels
@@ -14,8 +13,13 @@
 - display any website in the panels
 - hide the panels if not needed with a button click
 - links open in system default browser
+- load custom css
 - darkmode
 - electron app should run fine on windows/linux/mac
+
+# Download
+
+- Download latest Windows binary https://github.com/corgan2222/Dashboard/releases
 
 # Dependencies for building from source
 
@@ -72,6 +76,9 @@ need this, because of massive ram increase after time on the grafana frame
 - Checkbox to show frame content fullframe
 - Refresh frame each XX minutes to prevent buffer overflow or similare technic
 
+# looking for help on
+
+because of mylimited time, im looking for developers to work with my on this project
 
 # Build with
 
