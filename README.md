@@ -1,40 +1,33 @@
+
+# Awesome IT Dashboard 
+
 [![Angular Logo](https://www.vectorlogo.zone/logos/angular/angular-icon.svg)](https://angular.io/) [![Electron Logo](https://www.vectorlogo.zone/logos/electronjs/electronjs-icon.svg)](https://electronjs.org/)
 
-![Maintained][maintained-badge]
-[![Travis Build Status][build-badge]][build]
-[![Make a pull request][prs-badge]][prs]
-[![License](http://img.shields.io/badge/Licence-MIT-brightgreen.svg)](LICENSE.md)
+![](https://raw.githubusercontent.com/corgan2222/Dashboard/master/doc/it_dash_3.jpg)
 
-[![Watch on GitHub][github-watch-badge]][github-watch]
-[![Star on GitHub][github-star-badge]][github-star]
-[![Tweet][twitter-badge]][twitter]
 
-# Introduction
+# Features
 
-Bootstrap and package your project with Angular 9 and Electron 8 (Typescript + SASS + Hot Reload) for creating Desktop applications.
+- 6 Panels
+- configure each panel seperate 
+- configure panel size with slider
+- display any website in the panels
+- hide the panels if not needed with a button click
+- links open in system default browser
+- darkmode
+- electron app should run fine on windows/linux/mac
 
-Currently runs with:
+# Dependencies for building from source
 
-- Angular v9.1.4
-- Electron v8.2.5
-- Electron Builder v22.6.0
+- Node 12+ 
+- Visual Studio
 
-With this sample, you can :
-
-- Run your app in a local development environment with Electron & Hot reload
-- Run your app in a production environment
-- Package your app into an executable file for Linux, Windows & Mac
-
-/!\ Hot reload only pertains to the renderer process. The main electron process is not able to be hot reloaded, only restarted.
-
-/!\ Angular 9.x CLI needs Node 10.13 or later to works correctly.
-
-## Getting Started
+# Getting started compiling
 
 Clone this repository locally :
 
 ``` bash
-git clone https://github.com/maximegris/angular-electron.git
+git clone https://github.com/corgan2222/Dashboard
 ```
 
 Install dependencies with npm :
@@ -43,25 +36,11 @@ Install dependencies with npm :
 npm install
 ```
 
-There is an issue with `yarn` and `node_modules` when the application is built by the packager. Please use `npm` as dependencies manager.
-
-
-If you want to generate Angular components with Angular-cli , you **MUST** install `@angular/cli` in npm global context.
-Please follow [Angular-cli documentation](https://github.com/angular/angular-cli) if you had installed a previous version of `angular-cli`.
+run :
 
 ``` bash
-npm install -g @angular/cli
+Npm run start
 ```
-
-## To build for development
-
-- **in a terminal window** -> npm start
-
-Voila! You can use your Angular + Electron app in a local development environment with hot reload !
-
-The application code is managed by `main.ts`. In this sample, the app runs with a simple Angular App (http://localhost:4200) and an Electron window.
-The Angular component contains an example of Electron and NodeJS native lib import.
-You can disable "Developer Tools" by commenting `win.webContents.openDevTools();` in `main.ts`.
 
 ## Included Commands
 
@@ -75,36 +54,34 @@ You can disable "Developer Tools" by commenting `win.webContents.openDevTools();
 |`npm run electron:windows`| On a Windows OS, builds your application and creates an app consumable in windows 32/64 bit systems |
 |`npm run electron:mac`|  On a MAC OS, builds your application and generates a `.app` file of your application that can be run on Mac |
 
-**Your application is optimised. Only /dist folder and node dependencies are included in the executable.**
+** Your application is optimised. Only /dist folder and node dependencies are included in the executable.
 
-## You want to use a specific lib (like rxjs) in electron main thread ?
+# Bugs and Todo
 
-YES! You can do it! Just by importing your library in npm dependencies section (not **devDependencies**) with `npm install --save`. It will be loaded by electron during build phase and added to your final package. Then use your library by importing it in `main.ts` file. Quite simple, isn't it ?
+- Show Icons even for non https links. ATM, if a link for a frame is not https, the icon is not shown
+- Show Toogle Icons for each Frame to toogle
 
-## Browser mode
+### Changes to frames:
+- allow loading no http content into https sites ( --disable-web-security --allow-running-insecure-content )
+- show content in fullframe (camera stream image) - i can provide css/html for that
+- reload a frame after time (from settings), like if hiding and showing frame content
+need this, because of massive ram increase after time on the grafana frame
+- Frame Settings for each frame for the changes above:
+- fix the settings window, atm its breaks if two entrys has the same url/name
+- Checkbox to allow loading http content into https
+- Checkbox to show frame content fullframe
+- Refresh frame each XX minutes to prevent buffer overflow or similare technic
 
-Maybe you want to execute the application in the browser with hot reload ? Just run `npm run ng:serve:web`.
-**Note that you can't use Electron or NodeJS native libraries in this case.** Please check `providers/electron.service.ts` to watch how conditional import of electron/Native libraries is done.
 
-## Branch & Packages version
+# Build with
 
-- Angular 4 & Electron 1 : Branch [angular4](https://github.com/maximegris/angular-electron/tree/angular4)
-- Angular 5 & Electron 1 : Branch [angular5](https://github.com/maximegris/angular-electron/tree/angular5)
-- Angular 6 & Electron 3 : Branch [angular6](https://github.com/maximegris/angular-electron/tree/angular6)
-- Angular 7 & Electron 3 : Branch [angular7](https://github.com/maximegris/angular-electron/tree/angular7)
-- Angular 8 & Electron 7 : Branch [angular8](https://github.com/maximegris/angular-electron/tree/angular8)
-- Angular 9 & Electron 8 : (master)
+- Angular 
+- Electron 
+- Electron Builder 
 
-[build-badge]: https://travis-ci.org/maximegris/angular-electron.svg?branch=master&style=style=flat-square
-[build]: https://travis-ci.org/maximegris/angular-electron
-[license-badge]: https://img.shields.io/badge/license-Apache2-blue.svg?style=style=flat-square
-[license]: https://github.com/maximegris/angular-electron/blob/master/LICENSE.md
-[prs-badge]: https://img.shields.io/badge/PRs-welcome-brightgreen.svg?style=flat-square
-[prs]: http://makeapullrequest.com
-[github-watch-badge]: https://img.shields.io/github/watchers/maximegris/angular-electron.svg?style=social
-[github-watch]: https://github.com/maximegris/angular-electron/watchers
-[github-star-badge]: https://img.shields.io/github/stars/maximegris/angular-electron.svg?style=social
-[github-star]: https://github.com/maximegris/angular-electron/stargazers
-[twitter]: https://twitter.com/intent/tweet?text=Check%20out%20angular-electron!%20https://github.com/maximegris/angular-electron%20%F0%9F%91%8D
-[twitter-badge]: https://img.shields.io/twitter/url/https/github.com/maximegris/angular-electron.svg?style=social
-[maintained-badge]: https://img.shields.io/badge/maintained-yes-brightgreen
+![](https://raw.githubusercontent.com/corgan2222/Dashboard/master/doc/it_dash_1.jpg)
+
+
+# Meta
+
+Stefan Knaak – stefan@knaak.org, daniotech7
