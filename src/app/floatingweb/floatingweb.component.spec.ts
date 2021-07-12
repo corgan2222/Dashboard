@@ -1,4 +1,4 @@
-import { async, ComponentFixture, TestBed } from '@angular/core/testing';
+import { ComponentFixture, TestBed, waitForAsync } from '@angular/core/testing';
 
 import { FloatingwebComponent } from './floatingweb.component';
 
@@ -6,7 +6,7 @@ describe('FloatingwebComponent', () => {
   let component: FloatingwebComponent;
   let fixture: ComponentFixture<FloatingwebComponent>;
 
-  beforeEach(async(() => {
+  beforeEach(waitForAsync(() => {
     TestBed.configureTestingModule({
       declarations: [ FloatingwebComponent ]
     })
