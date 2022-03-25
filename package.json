@@ -67,7 +67,7 @@
         "core-js": "3.6.5",
         "cross-env": "7.0.2",
         "devtron": "1.4.0",
-        "electron": "^11.1.0",
+        "electron": "^13.6.6",
         "electron-builder": "22.6.0",
         "electron-installer-windows": "^3.0.0",
         "electron-packager": "^14.2.1",
