@@ -15,10 +15,10 @@ function createWindow() {
         width: size.width,
         height: size.height,
         webPreferences: {
-            webSecurity: false,
+            //webSecurity: false,
             nodeIntegration: true,
             //allowRunningInsecureContent: (serve) ? true : false,
-            allowRunningInsecureContent: true,
+            //allowRunningInsecureContent: true,
             webviewTag: true
         },
     });
