@@ -46,6 +46,13 @@ run :
 Npm run start
 ```
 
+
+## Modernisierung / Update
+
+Eine Schritt-für-Schritt-Anleitung für Node-12-Testumgebung, Docker und Upgrade-Pfad findest du hier:
+
+- `doc/node12-test-und-modernisierung.md`
+
 ## Included Commands
 
 |Command|Description|
