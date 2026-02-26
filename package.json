@@ -16,7 +16,7 @@
   },
   "devDependencies": {
     "electron": "^34.0.0",
-    "electron-builder": "^25.1.8"
+    "electron-builder": "^26.8.1"
   },
   "build": {
     "appId": "com.knaakIT.dashboard",
