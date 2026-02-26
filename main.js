@@ -1,95 +1,85 @@
-"use strict";
-Object.defineProperty(exports, "__esModule", { value: true });
-var electron_1 = require("electron");
-var path = require("path");
-var url = require("url");
-var win = null;
-var args = process.argv.slice(1), serve = args.some(function (val) { return val === '--serve'; });
+'use strict';
+
+const { app, BrowserWindow, ipcMain, shell, Menu } = require('electron');
+const path = require('path');
+const fs = require('fs');
+
+let mainWindow;
+
+// ── Config file path (persists across sessions) ──────────────────────────────
+function getConfigPath() {
+  return path.join(app.getPath('userData'), 'dashboard-config.json');
+}
+
+// ── Window ────────────────────────────────────────────────────────────────────
 function createWindow() {
-    var electronScreen = electron_1.screen;
-    var size = electronScreen.getPrimaryDisplay().workAreaSize;
-    // Create the browser window.
-    win = new electron_1.BrowserWindow({
-        //x: 0,
-        // y: 0,
-        width: size.width,
-        height: size.height,
-        webPreferences: {
-            //webSecurity: false,
-            nodeIntegration: true,
-            //allowRunningInsecureContent: (serve) ? true : false,
-            //allowRunningInsecureContent: true,
-            webviewTag: true
-        },
-    });
-    // Menu.setApplicationMenu(null);
-    // win.removeMenu();
-    if (serve) {
-        require('devtron').install();
-        win.webContents.openDevTools();
-        require('electron-reload')(__dirname, {
-            electron: require(__dirname + "/node_modules/electron")
-        });
-        win.loadURL('http://localhost:4200');
-    }
-    else {
-        win.loadURL(url.format({
-            pathname: path.join(__dirname, 'dist/index.html'),
-            protocol: 'file:',
-            slashes: true
-        }));
-    }
-    // Emitted when the window is closed.
-    win.on('closed', function () {
-        // Dereference the window object, usually you would store window
-        // in an array if your app supports multi windows, this is the time
-        // when you should delete the corresponding element.
-        win = null;
-    });
-    return win;
+  mainWindow = new BrowserWindow({
+    width: 1600,
+    height: 900,
+    minWidth: 600,
+    minHeight: 400,
+    backgroundColor: '#212529',
+    title: 'IT Dashboard v2.01',
+    icon: path.join(__dirname, 'assets', 'icon_512.png'),
+    webPreferences: {
+      preload: path.join(__dirname, 'preload.js'),
+      webviewTag: true,         // required for <webview> elements
+      nodeIntegration: false,
+      contextIsolation: true,
+      sandbox: false,           // webviewTag needs sandbox disabled in Electron 34
+    },
+    show: false,
+  });
+
+  mainWindow.loadFile('index.html');
+
+  mainWindow.once('ready-to-show', () => mainWindow.show());
+
+  // Minimal menu: just DevTools toggle in dev, nothing in prod
+  if (process.env.NODE_ENV === 'development') {
+    mainWindow.webContents.openDevTools({ mode: 'detach' });
+  } else {
+    Menu.setApplicationMenu(null);
+  }
 }
-try {
-    electron_1.app.allowRendererProcessReuse = true;
-    // This method will be called when Electron has finished
-    // initialization and is ready to create browser windows.
-    // Some APIs can only be used after this event occurs.
-    // Added 400 ms to fix the black background issue while using transparent window. More detais at https://github.com/electron/electron/issues/15947
-    electron_1.app.on('ready', function () { return setTimeout(createWindow, 400); });
-    // Quit when all windows are closed.
-    electron_1.app.on('window-all-closed', function () {
-        // On OS X it is common for applications and their menu bar
-        // to stay active until the user quits explicitly with Cmd + Q
-        if (process.platform !== 'darwin') {
-            electron_1.app.quit();
-        }
-    });
-    electron_1.app.on('activate', function () {
-        // On OS X it's common to re-create a window in the app when the
-        // dock icon is clicked and there are no other windows open.
-        if (win === null) {
-            createWindow();
-        }
-    });
-    electron_1.app.on('web-contents-created', function (webContentsCreatedEvent, contents) {
-        console.log('web-contents-created');
-        if (contents.getType() === 'webview') {
-            // console.log("URL:" ,contents.getURL());
-            //contents.insertCSS('.p-workspace__sidebar {display: none !important;}')
-            // contents.openDevTools();
-            var script = "\n                  console.log(\"preprocessing\");\n                  if (document.body.innerText.search(\"Google Chrome 60+\") !== -1)\n                  navigator.serviceWorker.getRegistrations().then(\n                      function(registrations) {\n                          console.log(registrations);\n                          for (let registration of registrations) {\n                              registration.unregister();\n                          }\n                          document.location.reload()\n                      }\n                  )\n                ";
-            contents.executeJavaScript(script);
-            contents.on('new-window', function (newWindowEvent, url) {
-                console.log(url);
-                console.log('opening popup');
-                if (url)
-                    electron_1.shell.openExternal(url);
-                newWindowEvent.preventDefault();
-            });
-        }
-    });
-}
-catch (e) {
-    // Catch Error
-    // throw e;
-}
-//# sourceMappingURL=main.js.map
+
+// ── Lifecycle ─────────────────────────────────────────────────────────────────
+app.whenReady().then(createWindow);
+
+app.on('window-all-closed', () => {
+  if (process.platform !== 'darwin') app.quit();
+});
+
+app.on('activate', () => {
+  if (BrowserWindow.getAllWindows().length === 0) createWindow();
+});
+
+// ── IPC: open URL in system browser ──────────────────────────────────────────
+ipcMain.handle('open-external', (_event, url) => {
+  shell.openExternal(url);
+});
+
+// ── IPC: read config file ─────────────────────────────────────────────────────
+ipcMain.handle('load-config', () => {
+  const p = getConfigPath();
+  if (!fs.existsSync(p)) return null;
+  try {
+    return JSON.parse(fs.readFileSync(p, 'utf8'));
+  } catch {
+    return null;
+  }
+});
+
+// ── IPC: write config file ────────────────────────────────────────────────────
+ipcMain.handle('save-config', (_event, config) => {
+  const p = getConfigPath();
+  fs.writeFileSync(p, JSON.stringify(config, null, 2), 'utf8');
+  return true;
+});
+
+// ── IPC: delete config file (reset) ──────────────────────────────────────────
+ipcMain.handle('delete-config', () => {
+  const p = getConfigPath();
+  if (fs.existsSync(p)) fs.unlinkSync(p);
+  return true;
+});

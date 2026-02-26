@@ -1,0 +1,78 @@
+name: Build & Release
+
+# Triggers on version tags: git tag v2.01 && git push --tags
+on:
+  push:
+    tags:
+      - 'v*'
+  # Also allows manual trigger from the GitHub Actions UI
+  workflow_dispatch:
+
+jobs:
+  build:
+    strategy:
+      matrix:
+        include:
+          - os: windows-latest
+            build_cmd: build:win
+            artifact_name: windows
+            artifact_glob: dist/*.exe
+
+          - os: ubuntu-latest
+            build_cmd: build:linux
+            artifact_name: linux
+            artifact_glob: dist/*.AppImage
+
+          - os: macos-latest
+            build_cmd: build:mac
+            artifact_name: mac
+            artifact_glob: dist/*.dmg
+
+    runs-on: ${{ matrix.os }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js 18
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm install
+
+      - name: Build (${{ matrix.os }})
+        run: npm run ${{ matrix.build_cmd }}
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Upload build artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.artifact_name }}
+          path: ${{ matrix.artifact_glob }}
+          if-no-files-found: error
+
+  release:
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write   # required to create a GitHub Release
+
+    steps:
+      - name: Download all artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: artifacts/**/*
+          generate_release_notes: true   # auto-fills release notes from commits
+          draft: false
+          prerelease: false
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
