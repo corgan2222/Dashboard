@@ -7,6 +7,11 @@ on:
       - 'v*'
   # Also allows manual trigger from the GitHub Actions UI
   workflow_dispatch:
+    inputs:
+      tag_name:
+        description: 'Release tag (e.g. v1.2.3) — required for manual runs'
+        required: true
+        type: string
 
 jobs:
   build:
@@ -70,6 +75,7 @@ jobs:
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
         with:
+          tag_name: ${{ inputs.tag_name || github.ref_name }}
           files: artifacts/**/*
           generate_release_notes: true   # auto-fills release notes from commits
           draft: false
