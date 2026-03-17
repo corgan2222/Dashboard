@@ -208,6 +208,42 @@ app.on('web-contents-created', (_e, contents) => {
       }
     `).catch(() => {});
   });
+
+  // ── External link handling ─────────────────────────────────────────────────
+  // Helper: returns true if url shares the domain of the webview's current page
+  const isSameDomain = (url) => {
+    try {
+      const currentHost = new URL(contents.getURL()).hostname.replace(/^www\./, '');
+      const linkHost    = new URL(url).hostname.replace(/^www\./, '');
+      return linkHost === currentHost
+          || linkHost.endsWith('.' + currentHost)
+          || currentHost.endsWith('.' + linkHost);
+    } catch (_) { return false; }
+  };
+
+  // Regular link clicks that navigate the page → open external if different domain
+  contents.on('will-navigate', (e, url) => {
+    const current = contents.getURL();
+    if (!current || current === 'about:blank') return; // initial load
+    const same = isSameDomain(url);
+    console.log(`[will-navigate] "${new URL(current).hostname}" → "${url}" same=${same}`);
+    if (!same) {
+      e.preventDefault();
+      shell.openExternal(url);
+    }
+  });
+
+  // window.open / target=_blank → same domain loads in-panel, external → browser
+  contents.setWindowOpenHandler(({ url }) => {
+    const same = isSameDomain(url);
+    console.log(`[window-open] → "${url}" same=${same}`);
+    if (same) {
+      setImmediate(() => contents.loadURL(url));
+    } else {
+      shell.openExternal(url);
+    }
+    return { action: 'deny' };
+  });
 });
 
 // ── IPC: webview right-click context menu ────────────────────────────────────

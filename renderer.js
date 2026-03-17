@@ -240,23 +240,6 @@ function makePanelEl(ci, ri, row) {
     loading.querySelector('span').textContent = `Failed to load: ${row.site}`;
   });
 
-  // Popups: navigate the webview to the URL so the full app UI loads in-panel.
-  // For truly external URLs (different domain), open in the system browser.
-  wv.addEventListener('new-window', (e) => {
-    e.preventDefault();
-    try {
-      const panelHost   = new URL(row.site).hostname.replace(/^www\./, '');
-      const popupHost   = new URL(e.url).hostname.replace(/^www\./, '');
-      const sameDomain  = popupHost === panelHost || popupHost.endsWith('.' + panelHost);
-      if (sameDomain) {
-        wv.loadURL(e.url);   // stay in-panel (e.g. Slack channel link → full channel view)
-      } else {
-        window.electronAPI.openExternal(e.url);
-      }
-    } catch (_) {
-      window.electronAPI.openExternal(e.url);
-    }
-  });
 
   wrapper.appendChild(wv);
   panel.appendChild(loading);
