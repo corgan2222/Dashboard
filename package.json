@@ -1,11 +1,15 @@
 {
   "name": "it-dashboard",
-  "version": "2.01.0",
+  "version": "2.0.4",
   "description": "Awesome IT Dashboard – multi-panel monitoring tool (Electron + vanilla JS)",
   "author": "corgan2222",
   "main": "main.js",
   "scripts": {
     "start": "electron .",
+    "prebuild": "node -e \"require('fs').writeFileSync('build-info.json', JSON.stringify({buildDate: new Date().toISOString()}))\"",
+    "prebuild:win": "node -e \"require('fs').writeFileSync('build-info.json', JSON.stringify({buildDate: new Date().toISOString()}))\"",
+    "prebuild:linux": "node -e \"require('fs').writeFileSync('build-info.json', JSON.stringify({buildDate: new Date().toISOString()}))\"",
+    "prebuild:mac": "node -e \"require('fs').writeFileSync('build-info.json', JSON.stringify({buildDate: new Date().toISOString()}))\"",
     "build": "electron-builder",
     "build:win": "electron-builder --win",
     "build:linux": "electron-builder --linux",
@@ -15,7 +19,7 @@
     "split.js": "^1.6.5"
   },
   "devDependencies": {
-    "electron": "^35.7.5",
+    "electron": "^40.0.0",
     "electron-builder": "^26.8.1"
   },
   "build": {
@@ -25,6 +29,7 @@
     "files": [
       "main.js",
       "preload.js",
+      "build-info.json",
       "index.html",
       "styles.css",
       "renderer.js",

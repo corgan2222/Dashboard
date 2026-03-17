@@ -1,8 +1,8 @@
 'use strict';
 
-// ── Firefox UA – same as original project ────────────────────────────────────
-const FIREFOX_UA =
-  'Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:135.0) Gecko/20100101 Firefox/135.0';
+// ── Chrome UA – required for WhatsApp/Slack to render their full UI ──────────
+const CHROME_UA =
+  'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/146.0.0.0 Safari/537.36';
 
 // CSS injected when "Default CSS" is enabled (hides common footer / nav noise)
 const DEFAULT_CSS = `
@@ -219,23 +219,43 @@ function makePanelEl(ci, ri, row) {
   // Webview – always visible so Electron can render the page
   const wv = document.createElement('webview');
   wv.setAttribute('src', row.site);
-  wv.setAttribute('useragent', FIREFOX_UA);
+  wv.setAttribute('useragent', CHROME_UA);
   wv.setAttribute('allowpopups', '');
   wv.setAttribute('autosize', 'on');
+  // Persistent partition per panel so sessions (logins, UI state) survive restarts
+  const partitionKey = (row.name || row.site).toLowerCase().replace(/[^a-z0-9]/g, '_');
+  wv.setAttribute('partition', `persist:${partitionKey}`);
 
   wv.addEventListener('did-finish-load', () => {
     loading.style.display = 'none';
     injectCssIntoWebview(wv);
   });
 
+  // Right-click → native context menu with DevTools + cache options
+  wv.addEventListener('context-menu', () => {
+    window.electronAPI.showWebviewContextMenu(wv.getWebContentsId());
+  });
+
   wv.addEventListener('did-fail-load', (_e) => {
     loading.querySelector('span').textContent = `Failed to load: ${row.site}`;
   });
 
-  // Open new windows/popups in system browser
+  // Popups: navigate the webview to the URL so the full app UI loads in-panel.
+  // For truly external URLs (different domain), open in the system browser.
   wv.addEventListener('new-window', (e) => {
     e.preventDefault();
-    window.electronAPI.openExternal(e.url);
+    try {
+      const panelHost   = new URL(row.site).hostname.replace(/^www\./, '');
+      const popupHost   = new URL(e.url).hostname.replace(/^www\./, '');
+      const sameDomain  = popupHost === panelHost || popupHost.endsWith('.' + panelHost);
+      if (sameDomain) {
+        wv.loadURL(e.url);   // stay in-panel (e.g. Slack channel link → full channel view)
+      } else {
+        window.electronAPI.openExternal(e.url);
+      }
+    } catch (_) {
+      window.electronAPI.openExternal(e.url);
+    }
   });
 
   wrapper.appendChild(wv);
