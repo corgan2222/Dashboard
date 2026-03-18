@@ -1,8 +1,13 @@
 'use strict';
 
 const { app, BrowserWindow, ipcMain, shell, Menu, session, webContents } = require('electron');
+
+// Suppress Chromium INFO-level console output (e.g. DirectShow device enumeration)
+app.commandLine.appendSwitch('log-level', '3');
 const path = require('path');
 const fs = require('fs');
+const { spawn } = require('child_process');
+const net = require('net');
 const { version } = require('./package.json');
 const buildDate = (() => {
   try {
@@ -41,7 +46,7 @@ function createWindow() {
 
   mainWindow.loadFile('index.html');
 
-  mainWindow.once('ready-to-show', () => mainWindow.show());
+  mainWindow.once('ready-to-show', () => { mainWindow.show(); mainWindow.maximize(); });
 
   // Lock the title so renderer document.title changes don't overwrite it
   mainWindow.on('page-title-updated', (e) => e.preventDefault());
@@ -101,6 +106,7 @@ app.whenReady().then(() => {
 app.on('session-created', (ses) => allowPermissions(ses));
 
 app.on('window-all-closed', () => {
+  stopGo2rtc();
   if (process.platform !== 'darwin') app.quit();
 });
 
@@ -273,6 +279,123 @@ ipcMain.handle('show-webview-context-menu', (_event, webContentsId) => {
 ipcMain.handle('clear-all-cache', async () => {
   await clearAllCaches();
   return true;
+});
+
+// ── go2rtc: RTSP → WebRTC proxy ───────────────────────────────────────────────
+let go2rtcProc  = null;
+let go2rtcPorts = null; // { api, rtsp, webrtc } — assigned at startup
+
+function go2rtcBin() {
+  const bin = process.platform === 'win32' ? 'go2rtc.exe' : 'go2rtc';
+  return path.join(app.getPath('userData'), 'go2rtc', bin);
+}
+
+function go2rtcAssetName() {
+  const { platform, arch } = process;
+  if (platform === 'win32')  return arch === 'arm64' ? 'go2rtc_win_arm64.zip' : 'go2rtc_win64.zip';
+  if (platform === 'darwin') return `go2rtc_mac_${arch === 'arm64' ? 'arm64' : 'amd64'}.zip`;
+  return `go2rtc_linux_${arch === 'arm64' ? 'arm64' : 'amd64'}`;
+}
+
+function sendStatus(msg) {
+  console.log('[go2rtc]', msg);
+  BrowserWindow.getAllWindows().forEach(w => w.webContents.send('go2rtc-status', msg));
+}
+
+async function downloadGo2rtc() {
+  const binPath = go2rtcBin();
+  fs.mkdirSync(path.dirname(binPath), { recursive: true });
+
+  sendStatus('Checking latest go2rtc release…');
+  const apiRes = await fetch('https://api.github.com/repos/AlexxIT/go2rtc/releases/latest',
+    { headers: { 'User-Agent': 'it-dashboard-electron' } });
+  if (!apiRes.ok) throw new Error(`GitHub API: HTTP ${apiRes.status}`);
+  const release = await apiRes.json();
+
+  const assetName = go2rtcAssetName();
+  const asset = release.assets.find(a => a.name === assetName);
+  if (!asset) throw new Error(`Asset "${assetName}" not found in release ${release.tag_name}`);
+
+  sendStatus(`Downloading go2rtc ${release.tag_name}…`);
+  const res = await fetch(asset.browser_download_url);
+  if (!res.ok) throw new Error(`HTTP ${res.status}`);
+
+  const total = parseInt(res.headers.get('content-length') || '0', 10);
+  let received = 0;
+  const chunks = [];
+  for await (const chunk of res.body) {
+    chunks.push(chunk);
+    received += chunk.length;
+    if (total) sendStatus(`Downloading go2rtc ${release.tag_name}… ${Math.round(received / total * 100)}%`);
+  }
+  const buffer = Buffer.concat(chunks);
+
+  if (go2rtcAssetName().endsWith('.zip')) {
+    const zipPath = binPath + '.zip';
+    fs.writeFileSync(zipPath, buffer);
+    await new Promise((resolve, reject) => {
+      const p = process.platform === 'win32'
+        ? spawn('powershell', ['-NoProfile', '-Command',
+            `Expand-Archive -LiteralPath '${zipPath}' -DestinationPath '${path.dirname(binPath)}' -Force`])
+        : spawn('unzip', ['-o', zipPath, '-d', path.dirname(binPath)]);
+      p.on('exit', code => code === 0 ? resolve() : reject(new Error(`extract failed: ${code}`)));
+    });
+    fs.unlinkSync(zipPath);
+  } else {
+    fs.writeFileSync(binPath, buffer);
+  }
+
+  if (process.platform !== 'win32') fs.chmodSync(binPath, 0o755);
+  sendStatus(`go2rtc ${release.tag_name} ready`);
+}
+
+function findFreePort() {
+  return new Promise((resolve, reject) => {
+    const srv = net.createServer();
+    srv.listen(0, '127.0.0.1', () => { const p = srv.address().port; srv.close(() => resolve(p)); });
+    srv.on('error', reject);
+  });
+}
+
+async function ensureGo2rtc() {
+  if (go2rtcProc) return true;
+  const bin = go2rtcBin();
+  if (!fs.existsSync(bin)) {
+    try { await downloadGo2rtc(); }
+    catch (e) { console.error('[go2rtc] download failed:', e.message); return false; }
+  }
+  const [apiPort, rtspPort, rtcPort] = await Promise.all([findFreePort(), findFreePort(), findFreePort()]);
+  go2rtcPorts = { api: apiPort, rtsp: rtspPort, webrtc: rtcPort };
+  const cfg = JSON.stringify({
+    api:    { listen: `127.0.0.1:${apiPort}`, origin: '*' },
+    rtsp:   { listen: `127.0.0.1:${rtspPort}` },
+    webrtc: { listen: `127.0.0.1:${rtcPort}`, candidates: [`127.0.0.1:${rtcPort}`] },
+  });
+  go2rtcProc = spawn(bin, ['-c', cfg], { stdio: 'pipe', windowsHide: true });
+  go2rtcProc.on('error', e => console.error('[go2rtc]', e.message));
+  const logGo2rtc = (d) => {
+    const lines = d.toString().split('\n')
+      .map(l => l.trimEnd())
+      .filter(l => l && !l.includes('[DSH]'));
+    if (lines.length) console.log('[go2rtc]', lines.join('\n'));
+  };
+  go2rtcProc.stdout?.on('data', logGo2rtc);
+  go2rtcProc.stderr?.on('data', logGo2rtc);
+  go2rtcProc.on('exit', () => { go2rtcProc = null; go2rtcPorts = null; });
+  await new Promise(r => setTimeout(r, 800));
+  return true;
+}
+
+function stopGo2rtc() {
+  go2rtcProc?.kill();
+  go2rtcProc = null;
+  go2rtcPorts = null;
+}
+
+ipcMain.handle('ensure-go2rtc', async () => {
+  const ok = await ensureGo2rtc();
+  if (!ok) return { error: 'Failed to download go2rtc — check your internet connection.' };
+  return { port: go2rtcPorts.api };
 });
 
 // ── IPC: open URL in system browser ──────────────────────────────────────────

@@ -201,8 +201,151 @@ function renderDashboard() {
   }
 }
 
+/** Returns true if the URL is an RTSP(S) camera stream. */
+function isRtsp(url) {
+  return /^rtsp[s]?:\/\//i.test(url || '');
+}
+
+/** Connect a <video> element to a go2rtc stream via WebRTC. Auto-reconnects. */
+function connectWebRTC(video, streamName, port) {
+  const pc = new RTCPeerConnection();
+  pc.addTransceiver('video', { direction: 'recvonly' });
+  pc.addTransceiver('audio', { direction: 'recvonly' });
+
+  pc.ontrack = (e) => {
+    video.srcObject = e.streams[0];
+  };
+
+  // Send our ICE candidates to go2rtc — without this, ICE always fails
+  pc.onicecandidate = (e) => {
+    if (e.candidate && ws.readyState === WebSocket.OPEN) {
+      ws.send(JSON.stringify({ type: 'webrtc/candidate', value: e.candidate.candidate }));
+    }
+  };
+
+  pc.onconnectionstatechange = () => {
+    console.log(`[webrtc] ${streamName} state=${pc.connectionState}`);
+    if (pc.connectionState === 'failed' || pc.connectionState === 'disconnected') {
+      pc.close(); ws.close();
+      setTimeout(() => connectWebRTC(video, streamName, port), 3000);
+    }
+  };
+
+  const ws = new WebSocket(`ws://localhost:${port}/api/ws?src=${encodeURIComponent(streamName)}`);
+
+  ws.onopen = () => {
+    console.log(`[webrtc] ${streamName} ws open, creating offer`);
+    pc.createOffer().then(offer => {
+      pc.setLocalDescription(offer);
+      ws.send(JSON.stringify({ type: 'webrtc/offer', value: offer.sdp }));
+    });
+  };
+
+  ws.onmessage = async (e) => {
+    const msg = JSON.parse(e.data);
+    console.log(`[webrtc] ${streamName} msg:`, JSON.stringify(msg));
+    if (msg.type === 'webrtc/answer') {
+      await pc.setRemoteDescription(new RTCSessionDescription({ type: 'answer', sdp: msg.value }));
+    } else if (msg.type === 'webrtc/candidate') {
+      await pc.addIceCandidate({ candidate: msg.value, sdpMid: '0' });
+    }
+  };
+
+  ws.onerror = (e) => {
+    console.log(`[webrtc] ${streamName} ws error`, e);
+    pc.close();
+    setTimeout(() => connectWebRTC(video, streamName, port), 3000);
+  };
+}
+
+/** Create the DOM element for an RTSP camera panel. */
+function makeRtspPanelEl(ci, ri, row) {
+  const panel = document.createElement('div');
+  panel.className = 'row-panel';
+  panel.id = `panel-${ci}-${ri}`;
+
+  const loading = document.createElement('div');
+  loading.className = 'panel-loading';
+  loading.innerHTML = `<div class="spinner"></div><span>${escapeHtml(row.name || row.site)}</span>`;
+
+  const video = document.createElement('video');
+  video.autoplay = true;
+  video.muted    = true;   // start muted; user toggles with the button
+  video.controls = false;
+  video.style.cssText = 'width:100%;height:100%;object-fit:contain;background:#000;display:block;';
+
+  // Mute/unmute toggle button — bottom-left corner, visible on hover
+  const muteBtn = document.createElement('button');
+  muteBtn.className = 'camera-mute-btn';
+  muteBtn.title = 'Unmute';
+  muteBtn.innerHTML = `
+    <svg class="icon-muted" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+      <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/>
+      <line x1="23" y1="9" x2="17" y2="15"/><line x1="17" y1="9" x2="23" y2="15"/>
+    </svg>
+    <svg class="icon-unmuted" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+      <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/>
+      <path d="M19.07 4.93a10 10 0 0 1 0 14.14M15.54 8.46a5 5 0 0 1 0 7.07"/>
+    </svg>`;
+
+  muteBtn.addEventListener('click', () => {
+    video.muted = !video.muted;
+    muteBtn.classList.toggle('unmuted', !video.muted);
+    muteBtn.title = video.muted ? 'Unmute' : 'Mute';
+  });
+
+  // Volume label shown briefly on wheel scroll
+  const volLabel = document.createElement('span');
+  volLabel.className = 'camera-vol-label';
+  let volLabelTimer = null;
+
+  muteBtn.addEventListener('wheel', (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    const delta = e.deltaY < 0 ? 0.1 : -0.1;
+    video.volume = Math.min(1, Math.max(0, video.volume + delta));
+    if (video.volume > 0) {
+      video.muted = false;
+      muteBtn.classList.add('unmuted');
+      muteBtn.title = 'Mute';
+    }
+    volLabel.textContent = Math.round(video.volume * 100) + '%';
+    volLabel.classList.add('visible');
+    clearTimeout(volLabelTimer);
+    volLabelTimer = setTimeout(() => volLabel.classList.remove('visible'), 1200);
+  }, { passive: false });
+
+  const camWrapper = document.createElement('div');
+  camWrapper.className = 'camera-wrapper';
+  camWrapper.appendChild(video);
+  camWrapper.appendChild(muteBtn);
+  camWrapper.appendChild(volLabel);
+
+  panel.appendChild(loading);
+  panel.appendChild(camWrapper);
+
+  const loadingText = loading.querySelector('span');
+  const statusOff = window.electronAPI.onGo2rtcStatus(msg => { loadingText.textContent = msg; });
+
+  window.electronAPI.ensureGo2rtc()
+    .then(result => {
+      if (typeof statusOff === 'function') statusOff();
+      if (result.error) {
+        loading.querySelector('.spinner').style.display = 'none';
+        loadingText.textContent = result.error;
+        return;
+      }
+      loading.style.display = 'none';
+      // ffmpeg: prefix routes through FFmpeg; #video=copy passes H264 unchanged, #audio=opus transcodes AAC→Opus
+      connectWebRTC(video, `ffmpeg:${row.site}#video=copy#audio=opus`, result.port);
+    });
+
+  return panel;
+}
+
 /** Create the DOM element for a single panel (row inside a column). */
 function makePanelEl(ci, ri, row) {
+  if (isRtsp(row.site)) return makeRtspPanelEl(ci, ri, row);
   const panel = document.createElement('div');
   panel.className = 'row-panel';
   panel.id = `panel-${ci}-${ri}`;

@@ -164,6 +164,59 @@ webview {
 }
 
 /* ── Loading indicator ───────────────────────────────────────────────────── */
+/* ── Camera panel ────────────────────────────────────────────────────────── */
+.camera-wrapper {
+  position: relative;
+  width: 100%;
+  height: 100%;
+}
+.camera-wrapper video {
+  width: 100%; height: 100%;
+  object-fit: contain;
+  background: #000;
+  display: block;
+}
+.camera-mute-btn {
+  position: absolute;
+  bottom: 10px;
+  left: 10px;
+  width: 32px; height: 32px;
+  border-radius: 50%;
+  border: none;
+  background: rgba(0,0,0,0.55);
+  color: #fff;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  opacity: 0;
+  transition: opacity 0.2s, background 0.2s;
+  padding: 6px;
+}
+.camera-wrapper:hover .camera-mute-btn { opacity: 1; }
+.camera-mute-btn:hover { background: rgba(0,0,0,0.8); }
+.camera-mute-btn svg { width: 100%; height: 100%; }
+.camera-mute-btn .icon-unmuted { display: none; }
+.camera-mute-btn.unmuted .icon-muted   { display: none; }
+.camera-mute-btn.unmuted .icon-unmuted { display: block; }
+
+.camera-vol-label {
+  position: absolute;
+  bottom: 10px;
+  left: 52px;
+  background: rgba(0,0,0,0.65);
+  color: #fff;
+  font-size: 12px;
+  font-weight: 600;
+  padding: 3px 8px;
+  border-radius: 4px;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 0.15s;
+  white-space: nowrap;
+}
+.camera-vol-label.visible { opacity: 1; }
+
 .panel-loading {
   position: absolute;
   inset: 0;
