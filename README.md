@@ -19,6 +19,15 @@ Display any website in a fully resizable multi-panel layout. Designed for IT pro
 - **Firefox user agent** — all webviews identify as Firefox 135 for maximum site compatibility
 - **External links** — new-window / popup links open in the system default browser
 
+- RTSP camera streams via go2rtc (auto-downloaded from GitHub on first use)
+  - go2rtc WebRTC: `ffmpeg:{url}#video=copy#audio=opus` for H264 passthrough + AAC→Opus transcoding
+  - Dynamic port allocation for go2rtc API/RTSP/WebRTC ports
+  - Audio toggle button on camera panels (click to mute/unmute)
+  - **Volume control via mouse wheel on audio icon** (10% steps, shows % label briefly)
+- Menu bar hidden by default; right-click context menu exposes DevTools, reload, zoom, cache clear
+- External links from panels open in system default browser
+- Config saved to userData via IPC (load/save/delete)
+
 ---
 
 ## Screenshots
