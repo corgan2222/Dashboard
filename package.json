@@ -1,6 +1,6 @@
 {
   "name": "it-dashboard",
-  "version": "2.0.5",
+  "version": "2.0.6",
   "description": "Awesome IT Dashboard – multi-panel monitoring tool (Electron + vanilla JS)",
   "author": "corgan2222",
   "main": "main.js",

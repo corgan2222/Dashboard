@@ -61,6 +61,16 @@ body { background: var(--bg); color: var(--text); }
   padding: 6px 0;
   z-index: 10;
   user-select: none;
+  overflow: hidden;
+  transition: width 0.2s ease, min-width 0.2s ease;
+}
+#sidebar.auto-hide {
+  width: 5px;
+  min-width: 5px;
+}
+#sidebar.auto-hide:hover {
+  width: 60px;
+  min-width: 60px;
 }
 
 #sidebar-logo {

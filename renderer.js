@@ -15,6 +15,7 @@ const defaultConfig = {
   darkMode: true,
   disabled: false,       // when true, gutter drag is disabled
   columnsOnly: false,    // when true, each column contains exactly one row
+  sidebarAutoHide: false, // when true, sidebar collapses to 5px until hovered
   useDefaultCss: false,
   customCss: '',
   columns: [
@@ -78,6 +79,7 @@ async function init() {
   renderSidebar();
   renderSettingsPanels();
   syncSettingsUI();
+  applySidebarAutoHide();
 }
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
@@ -461,11 +463,16 @@ function renderSettingsPanels() {
 }
 
 function syncSettingsUI() {
-  document.getElementById('toggle-dark-mode').checked       = config.darkMode !== false;
-  document.getElementById('toggle-disable-resize').checked  = config.disabled === true;
-  document.getElementById('toggle-columns-only').checked    = config.columnsOnly === true;
-  document.getElementById('custom-css-input').value         = config.customCss || '';
-  document.getElementById('default-css-state').textContent  = config.useDefaultCss ? 'on' : 'off';
+  document.getElementById('toggle-dark-mode').checked        = config.darkMode !== false;
+  document.getElementById('toggle-disable-resize').checked   = config.disabled === true;
+  document.getElementById('toggle-columns-only').checked     = config.columnsOnly === true;
+  document.getElementById('toggle-sidebar-autohide').checked = config.sidebarAutoHide === true;
+  document.getElementById('custom-css-input').value          = config.customCss || '';
+  document.getElementById('default-css-state').textContent   = config.useDefaultCss ? 'on' : 'off';
+}
+
+function applySidebarAutoHide() {
+  document.getElementById('sidebar').classList.toggle('auto-hide', config.sidebarAutoHide === true);
 }
 
 // ── Manage URLs modal ─────────────────────────────────────────────────────────
@@ -735,6 +742,13 @@ document.addEventListener('DOMContentLoaded', () => {
     config.columnsOnly = e.target.checked;
     saveConfig();
     renderDashboard();
+  });
+
+  // ── Settings: sidebar auto-hide ────────────────────────────────────────────
+  document.getElementById('toggle-sidebar-autohide').addEventListener('change', e => {
+    config.sidebarAutoHide = e.target.checked;
+    applySidebarAutoHide();
+    saveConfig();
   });
 
   // ── Settings: apply custom CSS ─────────────────────────────────────────────
