@@ -72,13 +72,57 @@ jobs:
         with:
           path: artifacts
 
-      - name: Create GitHub Release
+      - name: Collect categorized notes from the Release Drafter draft
+        id: notes
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          REPO: ${{ github.repository }}
+        run: |
+          # Pull the body of the standing Release Drafter draft (categorized notes).
+          body=$(gh api "repos/$REPO/releases" \
+            --jq '[.[] | select(.draft==true)] | sort_by(.created_at) | last | .body // ""')
+          {
+            echo "body<<RELEASE_NOTES_EOF"
+            echo "$body"
+            echo "RELEASE_NOTES_EOF"
+          } >> "$GITHUB_OUTPUT"
+
+      - name: Create GitHub Release (drafted categorized notes)
+        if: steps.notes.outputs.body != ''
         uses: softprops/action-gh-release@v2
         with:
           tag_name: ${{ inputs.tag_name || github.ref_name }}
           files: artifacts/**/*
-          generate_release_notes: true   # auto-fills release notes from commits
+          body: ${{ steps.notes.outputs.body }}
           draft: false
           prerelease: false
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Create GitHub Release (fallback auto notes)
+        if: steps.notes.outputs.body == ''
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ inputs.tag_name || github.ref_name }}
+          files: artifacts/**/*
+          generate_release_notes: true   # fallback when no draft notes exist yet
+          draft: false
+          prerelease: false
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Remove the consumed Release Drafter draft
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          REPO: ${{ github.repository }}
+        run: |
+          # The draft's notes are now on the published release; drop it so the
+          # next master push re-drafts cleanly for the following version.
+          draft_id=$(gh api "repos/$REPO/releases" \
+            --jq '[.[] | select(.draft==true)] | sort_by(.created_at) | last | .id // empty')
+          if [ -n "$draft_id" ]; then
+            gh api -X DELETE "repos/$REPO/releases/$draft_id"
+            echo "Deleted consumed draft $draft_id"
+          else
+            echo "No draft to delete"
+          fi

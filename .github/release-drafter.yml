@@ -1,5 +1,6 @@
 name-template: 'v$RESOLVED_VERSION'
 tag-template: 'v$RESOLVED_VERSION'
+tag-prefix: 'v'   # only consider v-prefixed tags for the version baseline (ignores old 2.02 / 2.0.5 tags)
 
 categories:
   - title: '🚀 Features'
