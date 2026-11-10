@@ -115,11 +115,39 @@ function createWindow() {
 // ── Track all sessions so we can clear them all at once ──────────────────────
 const activeSessions = new Set();
 
-// ── Permissions: allow common web app requests (notifications, media, etc.) ───
+// ── Permissions: grant what web apps need, deny the rest ────────────────────
+// Camera and microphone ('media') stay granted: calls in WhatsApp or Slack
+// must work. Everything not listed (geolocation, MIDI, idle detection,
+// keyboard lock, window management, ...) is denied and logged.
+const GRANTED_PERMISSIONS = new Set([
+  'media',                      // camera and microphone
+  'notifications',
+  'display-capture',            // screen sharing in calls
+  'clipboard-read',
+  'clipboard-sanitized-write',
+  'fullscreen',
+  'pointerLock',
+  'mediaKeySystem',             // DRM video
+  'speaker-selection',
+  'storage-access',
+  'top-level-storage-access',
+]);
+const EXTERNAL_PROTOCOLS = new Set(['http:', 'https:', 'mailto:', 'tel:']);
+
+function isPermissionGranted(permission, details) {
+  if (permission === 'openExternal') {
+    try { return EXTERNAL_PROTOCOLS.has(new URL(details.externalURL).protocol); }
+    catch (_) { return false; }
+  }
+  return GRANTED_PERMISSIONS.has(permission);
+}
+
 function allowPermissions(ses) {
   activeSessions.add(ses);
-  ses.setPermissionRequestHandler((_webContents, _permission, callback) => {
-    callback(true);
+  ses.setPermissionRequestHandler((_webContents, permission, callback, details) => {
+    const granted = isPermissionGranted(permission, details || {});
+    if (!granted) console.log(`[permission] denied ${permission} for ${details && details.requestingUrl}`);
+    callback(granted);
   });
 }
 
