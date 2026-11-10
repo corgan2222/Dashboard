@@ -109,6 +109,8 @@ function renderDashboard() {
   splitInstances = [];
 
   const main = document.getElementById('main-content');
+  // Stop what removed panels still run (camera streams) before dropping them
+  main.querySelectorAll('.row-panel').forEach(p => { if (p._cleanup) p._cleanup(); });
   main.innerHTML = '';
 
   const visibleCols = config.columns.filter(c => c.visible);
@@ -208,55 +210,85 @@ function isRtsp(url) {
   return /^rtsp[s]?:\/\//i.test(url || '');
 }
 
-/** Connect a <video> element to a go2rtc stream via WebRTC. Auto-reconnects. */
+/**
+ * Connect a <video> element to a go2rtc stream via WebRTC. Auto-reconnects.
+ * Returns a stop function: it closes the connection and ends the reconnects,
+ * so a removed panel no longer keeps a stream (and go2rtc's ffmpeg) running.
+ */
 function connectWebRTC(video, streamName, port) {
-  const pc = new RTCPeerConnection();
-  pc.addTransceiver('video', { direction: 'recvonly' });
-  pc.addTransceiver('audio', { direction: 'recvonly' });
+  let pc = null;
+  let ws = null;
+  let retryTimer = null;
+  let stopped = false;
 
-  pc.ontrack = (e) => {
-    video.srcObject = e.streams[0];
+  const teardown = () => {
+    if (pc) { pc.onconnectionstatechange = null; pc.close(); pc = null; }
+    if (ws) { ws.onerror = null; ws.onclose = null; ws.close(); ws = null; }
   };
 
-  // Send our ICE candidates to go2rtc — without this, ICE always fails
-  pc.onicecandidate = (e) => {
-    if (e.candidate && ws.readyState === WebSocket.OPEN) {
-      ws.send(JSON.stringify({ type: 'webrtc/candidate', value: e.candidate.candidate }));
-    }
+  // One reconnect per failure, even when the peer connection and the
+  // WebSocket both report it.
+  const scheduleRetry = () => {
+    teardown();
+    if (stopped || retryTimer) return;
+    retryTimer = setTimeout(() => { retryTimer = null; start(); }, 3000);
   };
 
-  pc.onconnectionstatechange = () => {
-    console.log(`[webrtc] ${streamName} state=${pc.connectionState}`);
-    if (pc.connectionState === 'failed' || pc.connectionState === 'disconnected') {
-      pc.close(); ws.close();
-      setTimeout(() => connectWebRTC(video, streamName, port), 3000);
-    }
+  const start = () => {
+    if (stopped) return;
+    const conn = new RTCPeerConnection();
+    const sock = new WebSocket(`ws://localhost:${port}/api/ws?src=${encodeURIComponent(streamName)}`);
+    pc = conn;
+    ws = sock;
+
+    conn.addTransceiver('video', { direction: 'recvonly' });
+    conn.addTransceiver('audio', { direction: 'recvonly' });
+    conn.ontrack = (e) => { video.srcObject = e.streams[0]; };
+
+    // Send our ICE candidates to go2rtc — without this, ICE always fails
+    conn.onicecandidate = (e) => {
+      if (e.candidate && sock.readyState === WebSocket.OPEN) {
+        sock.send(JSON.stringify({ type: 'webrtc/candidate', value: e.candidate.candidate }));
+      }
+    };
+
+    conn.onconnectionstatechange = () => {
+      if (conn.connectionState === 'failed' || conn.connectionState === 'disconnected') {
+        console.log(`[webrtc] ${streamName} state=${conn.connectionState}, reconnecting`);
+        scheduleRetry();
+      }
+    };
+
+    sock.onopen = () => {
+      conn.createOffer().then(offer => {
+        conn.setLocalDescription(offer);
+        sock.send(JSON.stringify({ type: 'webrtc/offer', value: offer.sdp }));
+      });
+    };
+
+    sock.onmessage = async (e) => {
+      const msg = JSON.parse(e.data);
+      if (msg.type === 'webrtc/answer') {
+        await conn.setRemoteDescription(new RTCSessionDescription({ type: 'answer', sdp: msg.value }));
+      } else if (msg.type === 'webrtc/candidate') {
+        await conn.addIceCandidate({ candidate: msg.value, sdpMid: '0' });
+      }
+    };
+
+    sock.onerror = () => {
+      console.log(`[webrtc] ${streamName} ws error, reconnecting`);
+      scheduleRetry();
+    };
   };
 
-  const ws = new WebSocket(`ws://localhost:${port}/api/ws?src=${encodeURIComponent(streamName)}`);
+  start();
 
-  ws.onopen = () => {
-    console.log(`[webrtc] ${streamName} ws open, creating offer`);
-    pc.createOffer().then(offer => {
-      pc.setLocalDescription(offer);
-      ws.send(JSON.stringify({ type: 'webrtc/offer', value: offer.sdp }));
-    });
-  };
-
-  ws.onmessage = async (e) => {
-    const msg = JSON.parse(e.data);
-    console.log(`[webrtc] ${streamName} msg:`, JSON.stringify(msg));
-    if (msg.type === 'webrtc/answer') {
-      await pc.setRemoteDescription(new RTCSessionDescription({ type: 'answer', sdp: msg.value }));
-    } else if (msg.type === 'webrtc/candidate') {
-      await pc.addIceCandidate({ candidate: msg.value, sdpMid: '0' });
-    }
-  };
-
-  ws.onerror = (e) => {
-    console.log(`[webrtc] ${streamName} ws error`, e);
-    pc.close();
-    setTimeout(() => connectWebRTC(video, streamName, port), 3000);
+  return () => {
+    stopped = true;
+    clearTimeout(retryTimer);
+    retryTimer = null;
+    teardown();
+    video.srcObject = null;
   };
 }
 
@@ -329,9 +361,19 @@ function makeRtspPanelEl(ci, ri, row) {
   const loadingText = loading.querySelector('span');
   const statusOff = window.electronAPI.onGo2rtcStatus(msg => { loadingText.textContent = msg; });
 
+  let stopStream = null;
+  let destroyed = false;
+  panel._cleanup = () => {
+    destroyed = true;
+    statusOff();
+    clearTimeout(volLabelTimer);
+    if (stopStream) stopStream();
+  };
+
   window.electronAPI.ensureGo2rtc()
     .then(result => {
-      if (typeof statusOff === 'function') statusOff();
+      statusOff();
+      if (destroyed) return;
       if (result.error) {
         loading.querySelector('.spinner').style.display = 'none';
         loadingText.textContent = result.error;
@@ -339,7 +381,7 @@ function makeRtspPanelEl(ci, ri, row) {
       }
       loading.style.display = 'none';
       // ffmpeg: prefix routes through FFmpeg; #video=copy passes H264 unchanged, #audio=opus transcodes AAC→Opus
-      connectWebRTC(video, `ffmpeg:${row.site}#video=copy#audio=opus`, result.port);
+      stopStream = connectWebRTC(video, `ffmpeg:${row.site}#video=copy#audio=opus`, result.port);
     });
 
   return panel;
