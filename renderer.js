@@ -103,54 +103,99 @@ async function saveConfig() {
 }
 
 // ── Dashboard rendering ───────────────────────────────────────────────────────
+// Panel and column elements survive a re-render. A <webview> that leaves the
+// DOM loses its page, so toggling one panel must not touch the others: existing
+// elements stay where they are, new ones are inserted, removed ones dropped.
+const panelEls = new Map();   // row object -> panel element
+const colElsByCol = new Map(); // column object -> column element
+
+function removePanelEl(row) {
+  const el = panelEls.get(row);
+  if (!el) return;
+  if (el._cleanup) el._cleanup();
+  el.remove();
+  panelEls.delete(row);
+}
+
+/** Existing panel element for this row, or a new one when there is none or its page changed. */
+function getPanelEl(ci, ri, row) {
+  let el = panelEls.get(row);
+  if (el && (el._site !== row.site || el._name !== row.name)) {
+    removePanelEl(row);
+    el = null;
+  }
+  if (!el) {
+    el = makePanelEl(ci, ri, row);
+    el._site = row.site;
+    el._name = row.name;
+    panelEls.set(row, el);
+  }
+  el.id = `panel-${ci}-${ri}`;
+  el.style.height = '';
+  return el;
+}
+
+/** Put children into parent in this order; a child already in place is not moved. */
+function placeChildren(parent, children) {
+  children.forEach((child, i) => {
+    if (parent.children[i] !== child) parent.insertBefore(child, parent.children[i] || null);
+  });
+}
+
 function renderDashboard() {
-  // Tear down old Split instances before clearing DOM
+  // Split.js adds gutters and inline sizes; drop them, keep the elements
   splitInstances.forEach(s => { try { s.destroy(); } catch (_) {} });
   splitInstances = [];
 
   const main = document.getElementById('main-content');
-  // Stop what removed panels still run (camera streams) before dropping them
-  main.querySelectorAll('.row-panel').forEach(p => { if (p._cleanup) p._cleanup(); });
-  main.innerHTML = '';
+  const emptyState = document.getElementById('empty-state');
+  if (emptyState) emptyState.remove();
 
-  const visibleCols = config.columns.filter(c => c.visible);
-  if (visibleCols.length === 0) {
-    main.innerHTML =
+  // ── What should be on screen ───────────────────────────────────────────────
+  const layout = [];
+  config.columns.forEach((col, ci) => {
+    if (!col.visible) return;
+    let rows = col.rows.map((row, ri) => ({ row, ri })).filter(x => x.row.visible);
+    // Columns only: first visible row, stretched to fill the column
+    if (config.columnsOnly) rows = rows.slice(0, 1);
+    layout.push({ col, ci, rows });
+  });
+
+  // ── Drop what is no longer shown ───────────────────────────────────────────
+  const wantedRows = new Set(layout.flatMap(c => c.rows.map(x => x.row)));
+  [...panelEls.keys()].forEach(row => { if (!wantedRows.has(row)) removePanelEl(row); });
+  const wantedCols = new Set(layout.map(c => c.col));
+  [...colElsByCol.entries()].forEach(([col, el]) => {
+    if (!wantedCols.has(col)) { el.remove(); colElsByCol.delete(col); }
+  });
+
+  if (layout.length === 0) {
+    main.insertAdjacentHTML('beforeend',
       '<div id="empty-state"><span>📊</span>' +
-      '<p>All panels are hidden.<br>Click a sidebar button to restore one.</p></div>';
+      '<p>All panels are hidden.<br>Click a sidebar button to restore one.</p></div>');
     return;
   }
 
   // ── Build column elements ──────────────────────────────────────────────────
   const colEls = [];
 
-  config.columns.forEach((col, ci) => {
-    if (!col.visible) return;
-
-    const colEl = document.createElement('div');
-    colEl.className = 'split-col';
+  layout.forEach(({ col, ci, rows }) => {
+    let colEl = colElsByCol.get(col);
+    if (!colEl) {
+      colEl = document.createElement('div');
+      colEl.className = 'split-col';
+      colElsByCol.set(col, colEl);
+    }
     colEl.id = `col-${ci}`;
+    colEl.style.width = '';
 
-    const visibleRows = col.rows.filter(r => r.visible);
+    const rowEls = rows.map(({ row, ri }) => getPanelEl(ci, ri, row));
+    placeChildren(colEl, rowEls);
+    colEls.push(colEl);
 
     if (config.columnsOnly) {
-      // Only show first visible row, stretched to fill the column
-      const row = visibleRows[0];
-      if (row) {
-        const el = makePanelEl(ci, col.rows.indexOf(row), row);
-        el.style.height = '100%';
-        colEl.appendChild(el);
-      }
+      if (rowEls[0]) rowEls[0].style.height = '100%';
     } else {
-      const rowEls = [];
-
-      col.rows.forEach((row, ri) => {
-        if (!row.visible) return;
-        const rowEl = makePanelEl(ci, ri, row);
-        colEl.appendChild(rowEl);
-        rowEls.push(rowEl);
-      });
-
       // Ensure rows fill the column when Split.js isn't running
       if (rowEls.length === 1) {
         rowEls[0].style.height = '100%';
@@ -178,10 +223,9 @@ function renderDashboard() {
         } catch (e) { console.warn('Row Split error', e); }
       }
     }
-
-    main.appendChild(colEl);
-    colEls.push(colEl);
   });
+
+  placeChildren(main, colEls);
 
   // ── Horizontal split for columns ───────────────────────────────────────────
   if (colEls.length === 1) {
