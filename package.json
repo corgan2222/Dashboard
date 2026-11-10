@@ -4,6 +4,7 @@
   "description": "Awesome IT Dashboard – multi-panel monitoring tool (Electron + vanilla JS)",
   "author": "corgan2222",
   "main": "main.js",
+  "go2rtcVersion": "1.9.15",
   "scripts": {
     "start": "electron .",
     "prebuild": "node -e \"require('fs').writeFileSync('build-info.json', JSON.stringify({buildDate: new Date().toISOString()}))\"",
