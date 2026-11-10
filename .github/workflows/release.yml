@@ -85,10 +85,14 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           REPO: ${{ github.repository }}
+          TAG: ${{ inputs.tag_name || github.ref_name }}
         run: |
           # Pull the body of the standing Release Drafter draft (categorized notes).
           body=$(gh api "repos/$REPO/releases" \
             --jq '[.[] | select(.draft==true)] | sort_by(.created_at) | last | .body // ""')
+          # The draft links its changelog to the version Release Drafter resolved
+          # from the labels; point it at the tag that is actually released.
+          body=$(printf '%s' "$body" | sed -E "s#(/compare/[^ )]*\.\.\.)v[0-9][0-9.]*#\1${TAG}#")
           {
             echo "body<<RELEASE_NOTES_EOF"
             echo "$body"
