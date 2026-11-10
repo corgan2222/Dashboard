@@ -270,16 +270,21 @@ app.on('web-contents-created', (_e, contents) => {
   // Apply immediately when webContents is created
   applyUAOverride();
 
-  // Re-apply on every navigation — fires before page scripts run
-  contents.on('did-start-loading', applyUAOverride);
+  // Re-apply before each new document, ahead of its scripts. Subframe loads
+  // and in-page navigations keep the override and need no call.
+  contents.on('did-start-navigation', (details) => {
+    if (details.isMainFrame && !details.isSameDocument) applyUAOverride();
+  });
 
   contents.on('did-attach', () => {
     contents.session.setUserAgent(CHROME_UA);
     applyUAOverride();
   });
 
-  // If an "unsupported browser" page loads, clear service workers and reload
-  contents.on('did-finish-load', () => {
+  // If an "unsupported browser" page loads, clear service workers and reload.
+  // Only the first load: innerText lays out the whole page, and the stale
+  // page this guards against comes from a service worker at startup.
+  contents.once('did-finish-load', () => {
     contents.executeJavaScript(`
       if (document.body && document.body.innerText.includes('not supported')) {
         navigator.serviceWorker.getRegistrations().then(regs => {
