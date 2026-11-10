@@ -1,6 +1,6 @@
 {
   "name": "it-dashboard",
-  "version": "2.0.8",
+  "version": "2.0.9",
   "description": "Awesome IT Dashboard – multi-panel monitoring tool (Electron + vanilla JS)",
   "author": "corgan2222",
   "main": "main.js",
@@ -19,8 +19,8 @@
     "split.js": "^1.6.5"
   },
   "devDependencies": {
-    "electron": "^40.8.5",
-    "electron-builder": "^26.8.1"
+    "electron": "^45.2.3",
+    "electron-builder": "^26.18.0"
   },
   "build": {
     "appId": "com.knaakIT.dashboard",

@@ -1,6 +1,6 @@
 # Awesome IT Dashboard v2 – Overview
 
-A modern rewrite of the [original Angular/Electron Dashboard](https://github.com/corgan2222/Dashboard) — rebuilt from scratch with **pure vanilla JavaScript and Electron 34**. No Angular, no React, no build step required for development.
+A modern rewrite of the [original Angular/Electron Dashboard](https://github.com/corgan2222/Dashboard) — rebuilt from scratch with **pure vanilla JavaScript and Electron 45**. No Angular, no React, no build step required for development.
 
 Display any website in a fully resizable multi-panel layout. Designed for IT professionals who want a single-window overview of their tools — Grafana, Slack, WhatsApp, Jira, GitHub, and more.
 
@@ -143,7 +143,7 @@ To reset to defaults, use **Settings → Reset to Default** inside the app, or d
 
 | Component | Technology |
 |-----------|-----------|
-| Shell | Electron 34 |
+| Shell | Electron 45 |
 | UI | Vanilla JavaScript (no framework) |
 | Layout | Split.js 1.6.5 |
 | Styling | CSS custom properties (dark/light theme) |
@@ -177,4 +177,4 @@ To reset to defaults, use **Settings → Reset to Default** inside the app, or d
 ## Based On
 
 Original project: [corgan2222/Dashboard](https://github.com/corgan2222/Dashboard) (Angular + Electron)
-This version is a clean rewrite using vanilla JS and Electron 34.
+This version is a clean rewrite using vanilla JS and Electron 45.
