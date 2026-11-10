@@ -98,6 +98,22 @@ async function init() {
 // ── Helpers ───────────────────────────────────────────────────────────────────
 function deepClone(obj) { return JSON.parse(JSON.stringify(obj)); }
 
+// A URL's password ("rtsp://user:secret@host") is shown as ••• everywhere.
+const URL_CREDENTIALS = /^([a-z][a-z0-9+.-]*:\/\/[^:/@\s]+:)([^@/\s]*)@/i;
+const PASSWORD_MASK = '•••';
+
+/** The URL with its password replaced by •••, for display. */
+function maskUrl(url) {
+  return String(url ?? '').replace(URL_CREDENTIALS, `$1${PASSWORD_MASK}@`);
+}
+
+/** An edited URL that still shows ••• as password gets the original password back. */
+function unmaskUrl(edited, original) {
+  const orig = URL_CREDENTIALS.exec(original || '');
+  if (!orig) return edited;
+  return edited.replace(URL_CREDENTIALS, (all, head, pw) => (pw === PASSWORD_MASK ? `${head}${orig[2]}@` : all));
+}
+
 function escapeHtml(str) {
   const d = document.createElement('div');
   d.textContent = str ?? '';
@@ -367,7 +383,7 @@ function makeRtspPanelEl(ci, ri, row) {
 
   const loading = document.createElement('div');
   loading.className = 'panel-loading';
-  loading.innerHTML = `<div class="spinner"></div><span>${escapeHtml(row.name || row.site)}</span>`;
+  loading.innerHTML = `<div class="spinner"></div><span>${escapeHtml(row.name || maskUrl(row.site))}</span>`;
 
   const video = document.createElement('video');
   video.autoplay = true;
@@ -496,7 +512,7 @@ function makePanelEl(ci, ri, row) {
   // Loading indicator (absolute overlay, hidden once page loads)
   const loading = document.createElement('div');
   loading.className = 'panel-loading';
-  loading.innerHTML = `<div class="spinner"></div><span>${escapeHtml(row.name || row.site)}</span>`;
+  loading.innerHTML = `<div class="spinner"></div><span>${escapeHtml(row.name || maskUrl(row.site))}</span>`;
 
   // Wrapper ensures webview fills the panel via CSS flex
   const wrapper = document.createElement('div');
@@ -523,7 +539,7 @@ function makePanelEl(ci, ri, row) {
   });
 
   wv.addEventListener('did-fail-load', (_e) => {
-    loading.querySelector('span').textContent = `Failed to load: ${row.site}`;
+    loading.querySelector('span').textContent = `Failed to load: ${maskUrl(row.site)}`;
   });
 
   // Auto-reload: a page that runs for days keeps growing (HA reached 2.5 GB);
@@ -577,7 +593,7 @@ function renderSidebar() {
     col.rows.forEach((row, ri) => {
       const btn = document.createElement('button');
       btn.className = `sidebar-btn ${row.visible ? 'active' : 'inactive'}`;
-      btn.title = `${row.name || 'Panel'}\n${row.site}`;
+      btn.title = `${row.name || 'Panel'}\n${maskUrl(row.site)}`;
       if (row.icon) {
         btn.innerHTML = `<img src="${row.icon}" alt="${escapeHtml(row.name)}" width="28" height="28" style="object-fit:contain;">`;
       } else {
@@ -620,7 +636,7 @@ function renderSettingsPanels() {
       row_el.innerHTML = `
         <label>
           <strong>${escapeHtml(row.name || 'Panel')}</strong>
-          <span class="site-url">${escapeHtml(row.site)}</span>
+          <span class="site-url">${escapeHtml(maskUrl(row.site))}</span>
         </label>
         ${reloadField}
         <input type="checkbox" class="panel-visible" ${row.visible ? 'checked' : ''}>
@@ -670,7 +686,7 @@ function renderUrlTable() {
         tr.innerHTML = `
           <td>${n}</td>
           <td><input type="text" class="edit-name" value="${escapeHtml(row.name)}"></td>
-          <td><input type="text" class="edit-url"  value="${escapeHtml(row.site)}"></td>
+          <td><input type="text" class="edit-url"  value="${escapeHtml(maskUrl(row.site))}"></td>
           <td class="pos-cell">
             <select class="edit-col">
               <option value="1" ${row.col===1?'selected':''}>C1</option>
@@ -695,7 +711,7 @@ function renderUrlTable() {
         tr.innerHTML = `
           <td>${n}</td>
           <td>${escapeHtml(row.name)}</td>
-          <td class="url-cell" title="${escapeHtml(row.site)}">${escapeHtml(row.site)}</td>
+          <td class="url-cell" title="${escapeHtml(maskUrl(row.site))}">${escapeHtml(maskUrl(row.site))}</td>
           <td class="pos-cell"><span class="pos-badge">C${row.col} R${row.row}</span></td>
           <td class="url-actions">
             <button class="btn-sm btn-edit">Edit</button>
@@ -718,15 +734,16 @@ function editRow(ci, ri) {
 
 function saveRow(ci, ri, tr) {
   const name   = tr.querySelector('.edit-name').value.trim();
-  const url    = tr.querySelector('.edit-url').value.trim();
+  const row    = config.columns[ci].rows[ri];
+  // The field shows ••• for the password; keep the real one unless retyped
+  const url    = unmaskUrl(tr.querySelector('.edit-url').value.trim(), row.site);
   const newCol = parseInt(tr.querySelector('.edit-col').value);
   const newRow = parseInt(tr.querySelector('.edit-row').value);
   if (!url) return;
 
-  const row = config.columns[ci].rows[ri];
   const posChanged = newCol !== row.col || newRow !== row.row;
 
-  row.name       = name || url;
+  row.name       = name || maskUrl(url);
   row.site       = url;
   row.isEditable = false;
 
@@ -757,7 +774,7 @@ function addPanel(name, url, targetCol, targetRow) {
   targetRow = Math.min(2, Math.max(1, parseInt(targetRow) || 1));
 
   const newPanel = {
-    name: name.trim() || url.trim(),
+    name: name.trim() || maskUrl(url.trim()),
     site: url.trim(),
     visible: true,
     size: 50,
