@@ -290,9 +290,8 @@ function isRtsp(url) {
  * Connect a <video> element to a go2rtc stream via WebRTC. Auto-reconnects.
  * Returns a stop function: it closes the connection and ends the reconnects,
  * so a removed panel no longer keeps a stream (and go2rtc's ffmpeg) running.
- * onTrack, if given, runs whenever a track of this stream reaches the video.
  */
-function connectWebRTC(video, streamName, port, onTrack) {
+function connectWebRTC(video, streamName, port) {
   let pc = null;
   let ws = null;
   let retryTimer = null;
@@ -324,7 +323,6 @@ function connectWebRTC(video, streamName, port, onTrack) {
     conn.ontrack = (e) => {
       ownStream = e.streams[0];
       video.srcObject = ownStream;
-      if (onTrack) onTrack();
     };
 
     // Send our ICE candidates to go2rtc — without this, ICE always fails
@@ -385,11 +383,16 @@ function makeRtspPanelEl(ci, ri, row) {
   loading.className = 'panel-loading';
   loading.innerHTML = `<div class="spinner"></div><span>${escapeHtml(row.name || maskUrl(row.site))}</span>`;
 
-  const video = document.createElement('video');
-  video.autoplay = true;
-  video.muted    = true;   // start muted; user toggles with the button
-  video.controls = false;
-  video.style.cssText = 'width:100%;height:100%;object-fit:contain;background:#000;display:block;';
+  const newVideo = () => {
+    const v = document.createElement('video');
+    v.autoplay = true;
+    v.controls = false;
+    v.style.cssText = 'width:100%;height:100%;object-fit:contain;background:#000;display:block;';
+    return v;
+  };
+  // The visible video. A stream switch replaces it with a new element.
+  let video = newVideo();
+  video.muted = true;   // start muted; user toggles with the button
 
   // Mute/unmute toggle button — bottom-left corner, visible on hover
   const muteBtn = document.createElement('button');
@@ -452,25 +455,46 @@ function makeRtspPanelEl(ci, ri, row) {
   const videoSrc = row.site;
   const audioSrc = `ffmpeg:${row.site}#video=copy#audio=opus`;
   let go2rtcPort = null;
-  let current = null;   // { src, stop } of the stream being set up or shown
-  let previous = null;  // keeps showing until the new stream delivers a track
+  let current = null;   // { src, el, stop }: the newest stream, shown or starting
+  let previous = null;  // the shown stream while `current` is still starting
   let audioOffTimer = null;
   let destroyed = false;
 
+  // A switch starts the new stream in a hidden second <video> and swaps the
+  // two once its first frame is painted, so the picture never goes black.
   const showStream = (src) => {
-    if (!go2rtcPort || destroyed || (current && current.src === src)) return;
-    if (previous) previous.stop();
+    if (!go2rtcPort || destroyed) return;
+    if (current && current.src === src) return;
+    if (previous) {
+      // The pending stream never got shown: drop it, keep the shown one
+      current.stop(); current.el.remove();
+      current = previous; previous = null;
+      if (current.src === src) return;
+    }
+    if (!current) {
+      current = { src, el: video, stop: connectWebRTC(video, src, go2rtcPort) };
+      return;
+    }
+    const el = newVideo();
+    el.muted = video.muted;
+    el.volume = video.volume;
+    el.classList.add('camera-pending');
+    camWrapper.insertBefore(el, video);
+    const next = { src, el, stop: connectWebRTC(el, src, go2rtcPort) };
     previous = current;
-    const next = { src, stop: null };
-    next.stop = connectWebRTC(video, src, go2rtcPort, () => {
-      if (current === next && previous) { previous.stop(); previous = null; }
-    });
     current = next;
+    el.requestVideoFrameCallback(() => {
+      if (current !== next || !previous) return;
+      previous.stop(); previous.el.remove(); previous = null;
+      el.classList.remove('camera-pending');
+      video = el;
+    });
   };
 
   // Sound on: switch to the ffmpeg source at once. Sound off: back to picture
   // only after a pause, so quick toggling does not restart ffmpeg every time.
   function updateAudioSource() {
+    if (current && current.el !== video) { current.el.muted = video.muted; current.el.volume = video.volume; }
     clearTimeout(audioOffTimer);
     if (!video.muted && video.volume > 0) showStream(audioSrc);
     else audioOffTimer = setTimeout(() => showStream(videoSrc), AUDIO_OFF_DELAY_MS);

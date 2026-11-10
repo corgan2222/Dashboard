@@ -186,6 +186,12 @@ webview {
   background: #000;
   display: block;
 }
+/* A stream that is still starting: decodes behind the shown one, invisible */
+.camera-wrapper video.camera-pending {
+  position: absolute; inset: 0;
+  opacity: 0;
+  pointer-events: none;
+}
 .camera-mute-btn {
   position: absolute;
   bottom: 10px;
