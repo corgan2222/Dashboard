@@ -46,6 +46,19 @@ const defaultConfig = {
   ],
 };
 
+// ── Auto-reload ───────────────────────────────────────────────────────────────
+const DEFAULT_RELOAD_HOURS = 6;          // panels without their own setting
+const MAX_RELOAD_HOURS = 168;
+const RELOAD_POSTPONE_MS = 10 * 60e3;    // retry delay while the panel is in use
+const RELOAD_USER_IDLE_SECONDS = 300;    // no input for this long = not in use
+const MAX_TIMEOUT_MS = 2147483647;       // setTimeout fires at once above this
+
+/** Hours between automatic reloads of a panel; 0 = never. */
+function reloadHoursOf(row) {
+  const h = Number(row.reloadHours);
+  return row.reloadHours != null && Number.isFinite(h) && h >= 0 ? Math.min(h, MAX_RELOAD_HOURS) : DEFAULT_RELOAD_HOURS;
+}
+
 // ── State ─────────────────────────────────────────────────────────────────────
 let config = null;
 let splitInstances = [];   // Track Split instances so we can destroy them on re-render
@@ -471,6 +484,27 @@ function makePanelEl(ci, ri, row) {
     loading.querySelector('span').textContent = `Failed to load: ${row.site}`;
   });
 
+  // Auto-reload: a page that runs for days keeps growing (HA reached 2.5 GB);
+  // a reload gives that memory back.
+  let reloadTimer = null;
+  const scheduleReload = (ms = reloadHoursOf(row) * 3600e3) => {
+    clearTimeout(reloadTimer);
+    reloadTimer = null;
+    if (!ms) return;
+    reloadTimer = setTimeout(async () => {
+      // Someone is working in this panel: try again later instead of losing input
+      const focused = document.hasFocus() && document.activeElement === wv;
+      if (focused && (await window.electronAPI.getIdleSeconds()) < RELOAD_USER_IDLE_SECONDS) {
+        scheduleReload(RELOAD_POSTPONE_MS);
+        return;
+      }
+      try { wv.reload(); } catch (e) { console.warn('auto-reload failed:', e); }
+      scheduleReload();
+    }, Math.min(ms, MAX_TIMEOUT_MS));
+  };
+  panel._scheduleReload = () => scheduleReload();
+  panel._cleanup = () => clearTimeout(reloadTimer);
+  scheduleReload();
 
   wrapper.appendChild(wv);
   panel.appendChild(loading);
@@ -535,14 +569,32 @@ function renderSettingsPanels() {
     col.rows.forEach((row, ri) => {
       const row_el = document.createElement('div');
       row_el.className = 'settings-panel-row';
+      // Camera panels reconnect on their own; only web pages get the reload
+      const reloadField = isRtsp(row.site) ? '<span class="reload-setting"></span>' : `
+        <label class="reload-setting" title="Reload this panel every N hours (0 = never)">
+          ↻ <input type="number" class="reload-hours" min="0" max="${MAX_RELOAD_HOURS}" step="0.5"
+                   value="${reloadHoursOf(row)}"> h
+        </label>`;
       row_el.innerHTML = `
         <label>
           <strong>${escapeHtml(row.name || 'Panel')}</strong>
           <span class="site-url">${escapeHtml(row.site)}</span>
         </label>
-        <input type="checkbox" ${row.visible ? 'checked' : ''}>
+        ${reloadField}
+        <input type="checkbox" class="panel-visible" ${row.visible ? 'checked' : ''}>
       `;
-      row_el.querySelector('input').addEventListener('change', () => togglePanel(ci, ri));
+      row_el.querySelector('.panel-visible').addEventListener('change', () => togglePanel(ci, ri));
+      const hoursInput = row_el.querySelector('.reload-hours');
+      if (hoursInput) {
+        hoursInput.addEventListener('change', () => {
+          const h = parseFloat(hoursInput.value);
+          row.reloadHours = Number.isFinite(h) && h >= 0 ? Math.min(h, MAX_RELOAD_HOURS) : DEFAULT_RELOAD_HOURS;
+          hoursInput.value = row.reloadHours;
+          saveConfig();
+          const el = panelEls.get(row);
+          if (el && el._scheduleReload) el._scheduleReload();
+        });
+      }
       container.appendChild(row_el);
     });
   });

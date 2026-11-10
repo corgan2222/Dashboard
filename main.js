@@ -1,6 +1,6 @@
 'use strict';
 
-const { app, BrowserWindow, ipcMain, shell, Menu, session, webContents, screen } = require('electron');
+const { app, BrowserWindow, ipcMain, shell, Menu, session, webContents, screen, powerMonitor } = require('electron');
 
 // Suppress Chromium INFO-level console output (e.g. DirectShow device enumeration)
 app.commandLine.appendSwitch('log-level', '3');
@@ -434,6 +434,9 @@ ipcMain.handle('ensure-go2rtc', async () => {
   if (!ok) return { error: 'Failed to download go2rtc — check your internet connection.' };
   return { port: go2rtcPorts.api };
 });
+
+// ── IPC: seconds since the last keyboard or mouse input on this machine ──────
+ipcMain.handle('get-idle-seconds', () => powerMonitor.getSystemIdleTime());
 
 // ── IPC: open URL in system browser ──────────────────────────────────────────
 ipcMain.handle('open-external', (_event, url) => {

@@ -10,6 +10,7 @@ contextBridge.exposeInMainWorld('electronAPI', {
   showWebviewContextMenu: (id)     => ipcRenderer.invoke('show-webview-context-menu', id),
   clearAllCache:          ()       => ipcRenderer.invoke('clear-all-cache'),
   ensureGo2rtc:           ()       => ipcRenderer.invoke('ensure-go2rtc'),
+  getIdleSeconds:         ()       => ipcRenderer.invoke('get-idle-seconds'),
   // Returns an unsubscribe function, so a removed camera panel drops its listener
   onGo2rtcStatus:         (cb)     => {
     const handler = (_e, msg) => cb(msg);
