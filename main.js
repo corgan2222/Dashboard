@@ -17,7 +17,8 @@ if (app.isPackaged && fs.existsSync(portableDataDir)) {
 
 const { spawn } = require('child_process');
 const net = require('net');
-const { version } = require('./package.json');
+// go2rtcVersion pins the go2rtc release this app version uses; see ensureGo2rtc
+const { version, go2rtcVersion } = require('./package.json');
 const buildDate = (() => {
   try {
     const d = new Date(require('./build-info.json').buildDate);
@@ -376,23 +377,23 @@ function sendStatus(msg) {
   BrowserWindow.getAllWindows().forEach(w => w.webContents.send('go2rtc-status', msg));
 }
 
+/** The go2rtc version the binary in userData came from; null if unknown. */
+function go2rtcVersionFile() {
+  return path.join(path.dirname(go2rtcBin()), 'version.txt');
+}
+function installedGo2rtcVersion() {
+  try { return fs.readFileSync(go2rtcVersionFile(), 'utf8').trim(); } catch (_) { return null; }
+}
+
 async function downloadGo2rtc() {
   const binPath = go2rtcBin();
   fs.mkdirSync(path.dirname(binPath), { recursive: true });
 
-  sendStatus('Checking latest go2rtc release…');
-  const apiRes = await fetch('https://api.github.com/repos/AlexxIT/go2rtc/releases/latest',
-    { headers: { 'User-Agent': 'it-dashboard-electron' } });
-  if (!apiRes.ok) throw new Error(`GitHub API: HTTP ${apiRes.status}`);
-  const release = await apiRes.json();
-
-  const assetName = go2rtcAssetName();
-  const asset = release.assets.find(a => a.name === assetName);
-  if (!asset) throw new Error(`Asset "${assetName}" not found in release ${release.tag_name}`);
-
-  sendStatus(`Downloading go2rtc ${release.tag_name}…`);
-  const res = await fetch(asset.browser_download_url);
-  if (!res.ok) throw new Error(`HTTP ${res.status}`);
+  const tag = `v${go2rtcVersion}`;
+  const url = `https://github.com/AlexxIT/go2rtc/releases/download/${tag}/${go2rtcAssetName()}`;
+  sendStatus(`Downloading go2rtc ${tag}…`);
+  const res = await fetch(url);
+  if (!res.ok) throw new Error(`${url}: HTTP ${res.status}`);
 
   const total = parseInt(res.headers.get('content-length') || '0', 10);
   let received = 0;
@@ -400,7 +401,7 @@ async function downloadGo2rtc() {
   for await (const chunk of res.body) {
     chunks.push(chunk);
     received += chunk.length;
-    if (total) sendStatus(`Downloading go2rtc ${release.tag_name}… ${Math.round(received / total * 100)}%`);
+    if (total) sendStatus(`Downloading go2rtc ${tag}… ${Math.round(received / total * 100)}%`);
   }
   const buffer = Buffer.concat(chunks);
 
@@ -420,7 +421,8 @@ async function downloadGo2rtc() {
   }
 
   if (process.platform !== 'win32') fs.chmodSync(binPath, 0o755);
-  sendStatus(`go2rtc ${release.tag_name} ready`);
+  fs.writeFileSync(go2rtcVersionFile(), go2rtcVersion);
+  sendStatus(`go2rtc ${tag} ready`);
 }
 
 function findFreePort() {
@@ -434,9 +436,15 @@ function findFreePort() {
 async function ensureGo2rtc() {
   if (go2rtcProc) return true;
   const bin = go2rtcBin();
-  if (!fs.existsSync(bin)) {
+  // Missing, or not the version this release pins: fetch the pinned one.
+  // If that fails, an existing binary of another version keeps running.
+  const present = fs.existsSync(bin);
+  if (!present || installedGo2rtcVersion() !== go2rtcVersion) {
     try { await downloadGo2rtc(); }
-    catch (e) { console.error('[go2rtc] download failed:', e.message); return false; }
+    catch (e) {
+      console.error('[go2rtc] download failed:', e.message);
+      if (!present) return false;
+    }
   }
   const [apiPort, rtspPort, rtcPort] = await Promise.all([findFreePort(), findFreePort(), findFreePort()]);
   go2rtcPorts = { api: apiPort, rtsp: rtspPort, webrtc: rtcPort };
