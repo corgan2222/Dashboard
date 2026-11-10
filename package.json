@@ -12,6 +12,8 @@
     "prebuild:mac": "node -e \"require('fs').writeFileSync('build-info.json', JSON.stringify({buildDate: new Date().toISOString()}))\"",
     "build": "electron-builder",
     "build:win": "electron-builder --win",
+    "build:portable": "electron-builder --win && pwsh -NoProfile -File scripts/make-portable.ps1",
+    "prebuild:portable": "node -e \"require('fs').writeFileSync('build-info.json', JSON.stringify({buildDate: new Date().toISOString()}))\"",
     "build:linux": "electron-builder --linux",
     "build:mac": "electron-builder --mac"
   },

@@ -6,6 +6,15 @@ const { app, BrowserWindow, ipcMain, shell, Menu, session, webContents, screen, 
 app.commandLine.appendSwitch('log-level', '3');
 const path = require('path');
 const fs = require('fs');
+
+// Portable mode: a "data" folder next to the executable holds settings, logins
+// and go2rtc. Only the portable zip ships that folder; the installed app and
+// dist/win-unpacked have none and keep using %APPDATA%\it-dashboard.
+const portableDataDir = path.join(path.dirname(process.execPath), 'data');
+if (app.isPackaged && fs.existsSync(portableDataDir)) {
+  app.setPath('userData', portableDataDir);
+}
+
 const { spawn } = require('child_process');
 const net = require('net');
 const { version } = require('./package.json');
