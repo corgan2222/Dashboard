@@ -262,6 +262,9 @@ function renderDashboard() {
   }
 }
 
+// After muting, the camera keeps its sound source this long before it drops ffmpeg
+const AUDIO_OFF_DELAY_MS = 30e3;
+
 /** Returns true if the URL is an RTSP(S) camera stream. */
 function isRtsp(url) {
   return /^rtsp[s]?:\/\//i.test(url || '');
@@ -271,12 +274,14 @@ function isRtsp(url) {
  * Connect a <video> element to a go2rtc stream via WebRTC. Auto-reconnects.
  * Returns a stop function: it closes the connection and ends the reconnects,
  * so a removed panel no longer keeps a stream (and go2rtc's ffmpeg) running.
+ * onTrack, if given, runs whenever a track of this stream reaches the video.
  */
-function connectWebRTC(video, streamName, port) {
+function connectWebRTC(video, streamName, port, onTrack) {
   let pc = null;
   let ws = null;
   let retryTimer = null;
   let stopped = false;
+  let ownStream = null;
 
   const teardown = () => {
     if (pc) { pc.onconnectionstatechange = null; pc.close(); pc = null; }
@@ -300,7 +305,11 @@ function connectWebRTC(video, streamName, port) {
 
     conn.addTransceiver('video', { direction: 'recvonly' });
     conn.addTransceiver('audio', { direction: 'recvonly' });
-    conn.ontrack = (e) => { video.srcObject = e.streams[0]; };
+    conn.ontrack = (e) => {
+      ownStream = e.streams[0];
+      video.srcObject = ownStream;
+      if (onTrack) onTrack();
+    };
 
     // Send our ICE candidates to go2rtc — without this, ICE always fails
     conn.onicecandidate = (e) => {
@@ -345,7 +354,8 @@ function connectWebRTC(video, streamName, port) {
     clearTimeout(retryTimer);
     retryTimer = null;
     teardown();
-    video.srcObject = null;
+    // Another stream may already show in this video; leave that one alone
+    if (video.srcObject === ownStream) video.srcObject = null;
   };
 }
 
@@ -383,6 +393,7 @@ function makeRtspPanelEl(ci, ri, row) {
     video.muted = !video.muted;
     muteBtn.classList.toggle('unmuted', !video.muted);
     muteBtn.title = video.muted ? 'Unmute' : 'Mute';
+    updateAudioSource();
   });
 
   // Volume label shown briefly on wheel scroll
@@ -404,6 +415,7 @@ function makeRtspPanelEl(ci, ri, row) {
     volLabel.classList.add('visible');
     clearTimeout(volLabelTimer);
     volLabelTimer = setTimeout(() => volLabel.classList.remove('visible'), 1200);
+    updateAudioSource();
   }, { passive: false });
 
   const camWrapper = document.createElement('div');
@@ -418,13 +430,43 @@ function makeRtspPanelEl(ci, ri, row) {
   const loadingText = loading.querySelector('span');
   const statusOff = window.electronAPI.onGo2rtcStatus(msg => { loadingText.textContent = msg; });
 
-  let stopStream = null;
+  // Picture comes straight from go2rtc's own RTSP client. The ffmpeg source
+  // (#video=copy passes H264 unchanged, #audio=opus transcodes AAC→Opus) runs
+  // only while sound is on, so a muted camera costs no ffmpeg process.
+  const videoSrc = row.site;
+  const audioSrc = `ffmpeg:${row.site}#video=copy#audio=opus`;
+  let go2rtcPort = null;
+  let current = null;   // { src, stop } of the stream being set up or shown
+  let previous = null;  // keeps showing until the new stream delivers a track
+  let audioOffTimer = null;
   let destroyed = false;
+
+  const showStream = (src) => {
+    if (!go2rtcPort || destroyed || (current && current.src === src)) return;
+    if (previous) previous.stop();
+    previous = current;
+    const next = { src, stop: null };
+    next.stop = connectWebRTC(video, src, go2rtcPort, () => {
+      if (current === next && previous) { previous.stop(); previous = null; }
+    });
+    current = next;
+  };
+
+  // Sound on: switch to the ffmpeg source at once. Sound off: back to picture
+  // only after a pause, so quick toggling does not restart ffmpeg every time.
+  function updateAudioSource() {
+    clearTimeout(audioOffTimer);
+    if (!video.muted && video.volume > 0) showStream(audioSrc);
+    else audioOffTimer = setTimeout(() => showStream(videoSrc), AUDIO_OFF_DELAY_MS);
+  }
+
   panel._cleanup = () => {
     destroyed = true;
     statusOff();
     clearTimeout(volLabelTimer);
-    if (stopStream) stopStream();
+    clearTimeout(audioOffTimer);
+    if (current) current.stop();
+    if (previous) previous.stop();
   };
 
   window.electronAPI.ensureGo2rtc()
@@ -437,8 +479,8 @@ function makeRtspPanelEl(ci, ri, row) {
         return;
       }
       loading.style.display = 'none';
-      // ffmpeg: prefix routes through FFmpeg; #video=copy passes H264 unchanged, #audio=opus transcodes AAC→Opus
-      stopStream = connectWebRTC(video, `ffmpeg:${row.site}#video=copy#audio=opus`, result.port);
+      go2rtcPort = result.port;
+      showStream(video.muted ? videoSrc : audioSrc);
     });
 
   return panel;
