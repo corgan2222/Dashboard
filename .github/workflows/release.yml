@@ -49,9 +49,10 @@ jobs:
         run: npm install
 
       - name: Build (${{ matrix.os }})
-        run: npm run ${{ matrix.build_cmd }}
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        # --publish never: electron-builder only builds. The release job below
+        # uploads the files once; with a tag and GH_TOKEN, electron-builder
+        # would otherwise publish them a second time on its own.
+        run: npm run ${{ matrix.build_cmd }} -- --publish never
 
       - name: Upload build artifact
         uses: actions/upload-artifact@v4

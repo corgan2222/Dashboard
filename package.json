@@ -29,6 +29,7 @@
     "appId": "com.knaakIT.dashboard",
     "productName": "IT Dashboard",
     "icon": "assets/icon_512.png",
+    "artifactName": "IT-Dashboard-${version}-${arch}.${ext}",
     "files": [
       "main.js",
       "preload.js",
@@ -41,6 +42,9 @@
     ],
     "win": {
       "target": [{ "target": "nsis", "arch": ["x64"] }]
+    },
+    "nsis": {
+      "artifactName": "IT-Dashboard-Setup-${version}.${ext}"
     },
     "linux": {
       "target": ["AppImage"]
