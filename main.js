@@ -1,6 +1,6 @@
 'use strict';
 
-const { app, BrowserWindow, ipcMain, shell, Menu, session, webContents } = require('electron');
+const { app, BrowserWindow, ipcMain, shell, Menu, session, webContents, screen } = require('electron');
 
 // Suppress Chromium INFO-level console output (e.g. DirectShow device enumeration)
 app.commandLine.appendSwitch('log-level', '3');
@@ -23,11 +23,39 @@ function getConfigPath() {
   return path.join(app.getPath('userData'), 'dashboard-config.json');
 }
 
+// ── Window position (persists across sessions) ───────────────────────────────
+function getWindowStatePath() {
+  return path.join(app.getPath('userData'), 'window-state.json');
+}
+
+/** Saved bounds, or null when there are none or they lie off every display. */
+function loadWindowState() {
+  try {
+    const s = JSON.parse(fs.readFileSync(getWindowStatePath(), 'utf8'));
+    if (![s.x, s.y, s.width, s.height].every(Number.isFinite)) return null;
+    // A monitor that is gone would leave the window off screen
+    const area = screen.getDisplayMatching(s).workArea;
+    const onScreen = s.x < area.x + area.width && s.x + s.width > area.x
+                  && s.y < area.y + area.height && s.y + s.height > area.y;
+    return onScreen ? s : null;
+  } catch (_) { return null; }
+}
+
+function saveWindowState() {
+  if (!mainWindow || mainWindow.isDestroyed()) return;
+  const state = { ...mainWindow.getNormalBounds(), maximized: mainWindow.isMaximized() };
+  try {
+    fs.writeFileSync(getWindowStatePath(), JSON.stringify(state));
+  } catch (e) { console.warn('[window-state] save failed:', e.message); }
+}
+
 // ── Window ────────────────────────────────────────────────────────────────────
 function createWindow() {
+  const saved = loadWindowState();
   mainWindow = new BrowserWindow({
-    width: 1600,
-    height: 900,
+    ...(saved ? { x: saved.x, y: saved.y } : {}),
+    width: saved ? saved.width : 1600,
+    height: saved ? saved.height : 900,
     minWidth: 600,
     minHeight: 400,
     backgroundColor: '#212529',
@@ -46,7 +74,16 @@ function createWindow() {
 
   mainWindow.loadFile('index.html');
 
-  mainWindow.once('ready-to-show', () => { mainWindow.show(); mainWindow.maximize(); });
+  // Start where the window was last closed; maximized unless it was restored then
+  mainWindow.once('ready-to-show', () => {
+    mainWindow.show();
+    if (!saved || saved.maximized) mainWindow.maximize();
+  });
+
+  let saveTimer = null;
+  const scheduleSave = () => { clearTimeout(saveTimer); saveTimer = setTimeout(saveWindowState, 500); };
+  ['resize', 'move', 'maximize', 'unmaximize'].forEach(ev => mainWindow.on(ev, scheduleSave));
+  mainWindow.on('close', () => { clearTimeout(saveTimer); saveWindowState(); });
 
   // Lock the title so renderer document.title changes don't overwrite it
   mainWindow.on('page-title-updated', (e) => e.preventDefault());
